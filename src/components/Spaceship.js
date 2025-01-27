@@ -15,11 +15,11 @@ const Spaceship = () => {
   const { camera } = useThree();
 
   // Movement parameters
-  const maxSpeed = 0.5;
-  const acceleration = 0.02;
+  const maxSpeed = 1.0; // Increased max speed
+  const acceleration = 0.03; // Increased acceleration
   const deceleration = 0.01;
-  const rotationSpeed = 0.03;
-  const ascendSpeed = 0.3;
+  const rotationSpeed = 0.05; // Increased rotation speed
+  const ascendSpeed = 0.5; // Increased ascend speed
   const tiltAngle = Math.PI * 0.15;
 
   useFrame((state, delta) => {
@@ -87,19 +87,16 @@ const Spaceship = () => {
     const hoverOffset = Math.sin(state.clock.elapsedTime * 2) * 0.02;
     ship.position.y += hoverOffset;
 
-    // Keep ship within bounds
-    const bounds = {
-      x: 30,
-      y: 20,
-      z: 30
-    };
-
-    ship.position.x = THREE.MathUtils.clamp(ship.position.x, -bounds.x, bounds.x);
-    ship.position.y = THREE.MathUtils.clamp(ship.position.y, 1, bounds.y);
-    ship.position.z = THREE.MathUtils.clamp(ship.position.z, -bounds.z, bounds.z);
-
-    // Camera following
-    const cameraOffset = new THREE.Vector3(0, 5, 12);
+    // Camera following with improved distance based on speed
+    const speedFactor = Math.abs(velocity.z) / maxSpeed;
+    const baseCameraDistance = 12;
+    const extraDistance = speedFactor * 8; // Camera pulls back as speed increases
+    
+    const cameraOffset = new THREE.Vector3(
+      0,
+      5 + speedFactor * 2, // Camera rises slightly with speed
+      baseCameraDistance + extraDistance
+    );
     const targetCameraPos = ship.position.clone().add(cameraOffset);
     
     camera.position.lerp(targetCameraPos, 0.1);

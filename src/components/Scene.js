@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
 import { Stars, Environment, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
@@ -6,6 +6,8 @@ import * as THREE from 'three';
 const Scene = () => {
   const earthRef = useRef();
   const cloudsRef = useRef();
+  const [obstacles, setObstacles] = useState([]);
+  const spaceRadius = 100; // Radius of active space around player
 
   // Load Earth textures
   const [
@@ -21,33 +23,35 @@ const Scene = () => {
 
   // Create stars for the background
   const starProps = useMemo(() => ({
-    radius: 100,
-    depth: 50,
-    count: 5000,
+    radius: 300,
+    depth: 100,
+    count: 10000,
     factor: 4,
     saturation: 0,
     fade: true,
-    speed: 2
+    speed: 1
   }), []);
 
-  // Create random obstacles with custom colors
-  const obstacles = useMemo(() => 
-    Array.from({ length: 15 }).map(() => ({
+  // Initialize obstacles
+  useMemo(() => {
+    const newObstacles = Array.from({ length: 30 }).map(() => ({
       position: [
-        Math.random() * 60 - 30,
-        Math.random() * 15,
-        Math.random() * 60 - 30
+        Math.random() * spaceRadius * 2 - spaceRadius,
+        Math.random() * spaceRadius * 2 - spaceRadius,
+        Math.random() * spaceRadius * 2 - spaceRadius
       ],
       rotation: [
         Math.random() * Math.PI,
         Math.random() * Math.PI,
         Math.random() * Math.PI
       ],
-      color: new THREE.Color().setHSL(Math.random(), 0.8, 0.6)
-    })), []
-  );
+      color: new THREE.Color().setHSL(Math.random(), 0.8, 0.6),
+      scale: Math.random() * 3 + 1
+    }));
+    setObstacles(newObstacles);
+  }, []);
 
-  useFrame(({ clock }) => {
+  useFrame(({ clock, camera }) => {
     const elapsedTime = clock.getElapsedTime();
     
     // Rotate Earth
@@ -59,24 +63,45 @@ const Scene = () => {
     if (cloudsRef.current) {
       cloudsRef.current.rotation.y = elapsedTime * 0.06;
     }
+
+    // Reposition obstacles that are too far from the camera
+    setObstacles(prevObstacles => {
+      return prevObstacles.map(obs => {
+        const distance = new THREE.Vector3(...obs.position).distanceTo(camera.position);
+        if (distance > spaceRadius) {
+          // Generate new position relative to camera
+          const angle = Math.random() * Math.PI * 2;
+          const radius = spaceRadius * 0.8;
+          return {
+            ...obs,
+            position: [
+              camera.position.x + Math.cos(angle) * radius,
+              camera.position.y + (Math.random() * spaceRadius - spaceRadius/2),
+              camera.position.z + Math.sin(angle) * radius
+            ]
+          };
+        }
+        return obs;
+      });
+    });
   });
 
   return (
     <>
       {/* Environment and Lighting */}
       <Environment preset="night" />
-      <ambientLight intensity={0.2} />
-      <pointLight position={[10, 10, 10]} intensity={0.5} />
-      <pointLight position={[-10, -10, -10]} intensity={0.3} color="#2ef" />
+      <ambientLight intensity={0.3} />
+      <pointLight position={[10, 10, 10]} intensity={1.0} />
+      <pointLight position={[-10, -10, -10]} intensity={0.5} color="#2ef" />
       
       {/* Stars background */}
       <Stars {...starProps} />
       
       {/* Space fog */}
-      <fog attach="fog" args={['#000', 30, 100]} />
+      <fog attach="fog" args={['#000', 50, 200]} />
       
-      {/* Earth */}
-      <group>
+      {/* Earth as an obstacle */}
+      <group position={[30, 20, -40]} scale={0.3}>
         {/* Main Earth sphere */}
         <mesh ref={earthRef}>
           <sphereGeometry args={[10, 64, 64]} />
@@ -118,6 +143,7 @@ const Scene = () => {
           key={i}
           position={obs.position}
           rotation={obs.rotation}
+          scale={obs.scale}
         >
           <boxGeometry args={[2, 2, 2]} />
           <meshStandardMaterial
@@ -132,7 +158,7 @@ const Scene = () => {
           <pointLight
             color={obs.color}
             intensity={0.5}
-            distance={5}
+            distance={10}
           />
         </mesh>
       ))}
