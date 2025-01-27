@@ -1,6 +1,11 @@
 import React, { useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useKeyboardControls, Trail, useGLTF } from "@react-three/drei";
+import {
+  useKeyboardControls,
+  Trail,
+  useGLTF,
+  MeshTransmissionMaterial,
+} from "@react-three/drei";
 import * as THREE from "three";
 
 const Spaceship = () => {
@@ -9,6 +14,8 @@ const Spaceship = () => {
   const [engineGlow, setEngineGlow] = useState(0.5);
   const exhaustTrailLeftRef = useRef();
   const exhaustTrailRightRef = useRef();
+  const [shieldPulse, setShieldPulse] = useState(0);
+  const [holoOpacity, setHoloOpacity] = useState(0.6);
 
   // Get keyboard controls
   const [subscribeKeys, getKeys] = useKeyboardControls();
@@ -134,18 +141,38 @@ const Spaceship = () => {
   });
 
   // Updated color scheme with more vibrant colors
-  const mainColor = "#0dcdeb"; // Deep metallic blue base
-  const accentColor = "#ff00ff"; // Bright magenta accent
-  const glowColor = "#00ffff"; // Cyan glow
-  const panelColor = "#4d00ff"; // Bright purple panels
-  const engineGlowColor = "#ff4400"; // Bright orange engine glow
-  const trimColor = "#00ff88"; // Neon green trim
+  const mainColor = "#00f7ff";
+  const accentColor = "#ff00d4";
+  const glowColor = "#80ffff";
+  const shieldColor = "#4080ff";
+  const engineGlowColor = "#ff6600";
+  const holoColor = "#00ffff";
+  const energyColor = "#ff00ff";
+  const trimColor = "#00ff88"; // Added missing trim color
+  const panelColor = "#4d00ff"; // Added missing panel color
 
   return (
     <group ref={shipRef} position={[0, 5, 0]} rotation={[0, Math.PI, 0]}>
-      {/* Main fuselage with enhanced metallic finish */}
+      {/* Energy Shield Effect */}
+      {/*<mesh>
+        <sphereGeometry args={[2.5, 32, 32]} />
+        <MeshTransmissionMaterial
+          backside
+          samples={4}
+          thickness={0.5}
+          chromaticAberration={1}
+          transmission={0.9}
+          distortion={0.5}
+          color={shieldColor}
+          temporalDistortion={0.3}
+          distortionScale={0.5}
+          opacity={0.2}
+        />
+      </mesh>*/}
+
+      {/* Enhanced Main Hull */}
       <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[0.8, 1.2, 4, 12]} />
+        <cylinderGeometry args={[0.8, 1.2, 4, 16]} />
         <meshStandardMaterial
           color={mainColor}
           metalness={1}
@@ -153,6 +180,106 @@ const Spaceship = () => {
           envMapIntensity={3}
         />
       </mesh>
+
+      {/* Advanced Geometric Panels */}
+      {[0, 1, 2, 3].map((i) => (
+        <mesh
+          key={`panel-${i}`}
+          position={[0, 0, -0.5]}
+          rotation={[0, (i * Math.PI) / 2, 0]}
+        >
+          <boxGeometry args={[0.3, 1.5, 0.05]} />
+          <meshStandardMaterial
+            color={accentColor}
+            emissive={accentColor}
+            emissiveIntensity={0.5}
+            metalness={0.9}
+            roughness={0.1}
+          />
+        </mesh>
+      ))}
+
+      {/* Holographic HUD Elements */}
+      <group position={[0, 0.8, -1.5]}>
+        <sprite scale={[1, 1, 1]}>
+          <spriteMaterial
+            color={holoColor}
+            transparent
+            opacity={holoOpacity}
+            blending={THREE.AdditiveBlending}
+          />
+        </sprite>
+      </group>
+
+      {/* Enhanced Engine System */}
+      <group position={[0, -0.2, 1.5]}>
+        {[-0.8, 0.8].map((x, i) => (
+          <group key={i} position={[x, 0, 0]}>
+            {/* Plasma Containment Ring */}
+            <mesh>
+              <torusGeometry args={[0.4, 0.05, 16, 32]} />
+              <meshStandardMaterial
+                color={energyColor}
+                emissive={energyColor}
+                emissiveIntensity={2}
+              />
+            </mesh>
+
+            {/* Enhanced Engine Trail */}
+            <Trail
+              ref={i === 0 ? exhaustTrailLeftRef : exhaustTrailRightRef}
+              length={20}
+              color={new THREE.Color(engineGlowColor)}
+              attenuation={(t) => t * t}
+              width={1.2}
+            >
+              <mesh>
+                <sphereGeometry args={[0.15]} />
+                <meshBasicMaterial
+                  color={engineGlowColor}
+                  transparent
+                  opacity={0.8}
+                  blending={THREE.AdditiveBlending}
+                />
+              </mesh>
+            </Trail>
+          </group>
+        ))}
+      </group>
+
+      {/* Energy Field Effects */}
+      <group position={[0, 0, 0]}>
+        <pointLight color={energyColor} intensity={2} distance={4} decay={2} />
+        <mesh>
+          <sphereGeometry args={[2, 16, 16]} />
+          <meshBasicMaterial
+            color={energyColor}
+            transparent
+            opacity={0.1}
+            blending={THREE.AdditiveBlending}
+          />
+        </mesh>
+      </group>
+
+      {/* Enhanced Weapon Systems */}
+      {[-1.5, 1.5].map((x, i) => (
+        <group key={i} position={[x, -0.1, -0.5]}>
+          <mesh>
+            <cylinderGeometry args={[0.15, 0.15, 1, 8]} />
+            <meshStandardMaterial
+              color={accentColor}
+              emissive={accentColor}
+              emissiveIntensity={1}
+            />
+          </mesh>
+          <pointLight
+            position={[0, 0, -0.5]}
+            color={energyColor}
+            intensity={0.5}
+            distance={2}
+          />
+        </group>
+      ))}
 
       {/* Enhanced neon trim rings with stronger glow */}
       <mesh position={[0, 0, -1]}>
