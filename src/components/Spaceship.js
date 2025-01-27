@@ -119,23 +119,53 @@ const Spaceship = () => {
     // Update engine visual effects
     const engineIntensity = Math.abs(velocity.z) / maxSpeed;
     setEngineGlow(0.5 + engineIntensity);
+
+    // Add subtle pulsing to the neon lights
+    const pulseIntensity = Math.sin(state.clock.elapsedTime * 2) * 0.3 + 0.7;
+
+    // Update material colors if refs exist
+    if (shipRef.current) {
+      shipRef.current.traverse((child) => {
+        if (child.isMesh && child.material.userData.isNeon) {
+          child.material.emissiveIntensity = pulseIntensity;
+        }
+      });
+    }
   });
 
-  const mainColor = "#3b4a57"; // Darker metallic base
-  const accentColor = "#1a1a1a"; // Darker accent
-  const glowColor = "#40a3ff"; // Brighter blue glow
-  const panelColor = "#526370"; // Slightly lighter than main for panels
+  // Updated color scheme with more vibrant base color
+  const mainColor = "#2f1b45"; // Rich deep purple base (option 1)
+  // const mainColor = "#1b3045";  // Deep navy blue base (option 2)
+  // const mainColor = "#451b2f";  // Deep burgundy base (option 3)
+  const accentColor = "#ff2277"; // Neon pink accent
+  const glowColor = "#00ffff"; // Cyan glow
+  const panelColor = "#4d00ff"; // Deep purple panels
+  const engineGlowColor = "#ff3300"; // Orange engine glow
+  const trimColor = "#00ff88"; // Neon green trim
 
   return (
     <group ref={shipRef} position={[0, 5, 0]} rotation={[0, Math.PI, 0]}>
-      {/* Enhanced Main fuselage */}
+      {/* Main fuselage with neon trim */}
       <mesh position={[0, 0, 0]}>
         <cylinderGeometry args={[0.8, 1.2, 4, 12]} />
         <meshStandardMaterial
           color={mainColor}
           metalness={0.9}
           roughness={0.3}
-          envMapIntensity={1.5}
+          envMapIntensity={2}
+        />
+      </mesh>
+
+      {/* Neon trim rings */}
+      <mesh position={[0, 0, -1]}>
+        <torusGeometry args={[0.9, 0.02, 16, 32]} />
+        <meshStandardMaterial
+          color={trimColor}
+          emissive={trimColor}
+          emissiveIntensity={1}
+          metalness={0.9}
+          roughness={0.2}
+          userData={{ isNeon: true }}
         />
       </mesh>
 
@@ -207,34 +237,22 @@ const Spaceship = () => {
         </mesh>
       </group>
 
-      {/* Enhanced cockpit with multi-layer glass effect */}
+      {/* Enhanced cockpit glow */}
       <group position={[0, 0.5, -1]}>
+        <pointLight color={glowColor} intensity={0.8} distance={3} />
         <mesh>
           <sphereGeometry
             args={[0.4, 24, 24, 0, Math.PI * 2, 0, Math.PI * 0.5]}
           />
           <meshPhysicalMaterial
             color={glowColor}
-            metalness={0.1}
-            roughness={0.1}
+            emissive={glowColor}
+            emissiveIntensity={0.5}
             transmission={0.9}
             thickness={0.5}
             opacity={0.7}
             transparent={true}
-          />
-        </mesh>
-        <mesh scale={0.98}>
-          <sphereGeometry
-            args={[0.4, 24, 24, 0, Math.PI * 2, 0, Math.PI * 0.5]}
-          />
-          <meshPhysicalMaterial
-            color={glowColor}
-            metalness={0.1}
             roughness={0.1}
-            transmission={0.9}
-            thickness={0.5}
-            opacity={0.3}
-            transparent={true}
           />
         </mesh>
       </group>
@@ -247,8 +265,10 @@ const Spaceship = () => {
             <mesh>
               <cylinderGeometry args={[0.3, 0.4, 1, 12]} />
               <meshStandardMaterial
-                color={accentColor}
-                metalness={0.95}
+                color={mainColor}
+                emissive={engineGlowColor}
+                emissiveIntensity={0.5}
+                metalness={0.9}
                 roughness={0.1}
               />
             </mesh>
@@ -267,23 +287,40 @@ const Spaceship = () => {
                 />
               </mesh>
             ))}
-            {/* Engine glow */}
+            {/* Enhanced engine glow */}
             <pointLight
               position={[0, 0, 0.5]}
-              color="#ff4400"
-              intensity={engineGlow * 1.5}
-              distance={4}
+              color={engineGlowColor}
+              intensity={engineGlow * 2}
+              distance={5}
             />
+
+            {/* Volumetric engine glow */}
+            <sprite position={[0, 0, 0.7]} scale={[1, 1, 1]}>
+              <spriteMaterial
+                map={null}
+                color={engineGlowColor}
+                transparent
+                opacity={0.3}
+                blending={THREE.AdditiveBlending}
+              />
+            </sprite>
+
             <Trail
               ref={i === 0 ? exhaustTrailLeftRef : exhaustTrailRightRef}
-              length={8}
-              color={new THREE.Color(1, 0.3, 0)}
+              length={10}
+              color={new THREE.Color(engineGlowColor)}
               attenuation={(t) => t * t}
-              width={0.5}
+              width={0.8}
             >
               <mesh>
                 <sphereGeometry args={[0.1]} />
-                <meshBasicMaterial color="#ff4400" transparent opacity={0.6} />
+                <meshBasicMaterial
+                  color={engineGlowColor}
+                  transparent
+                  opacity={0.6}
+                  blending={THREE.AdditiveBlending}
+                />
               </mesh>
             </Trail>
           </group>
@@ -342,6 +379,31 @@ const Spaceship = () => {
         intensity={0.5}
         distance={2}
       />
+
+      {/* Accent lighting */}
+      <pointLight
+        position={[0, 1, 0]}
+        color={accentColor}
+        intensity={0.5}
+        distance={3}
+      />
+      <pointLight
+        position={[0, -1, 0]}
+        color={panelColor}
+        intensity={0.5}
+        distance={3}
+      />
+
+      {/* Wing trim lights */}
+      {[-2, 2].map((x, i) => (
+        <pointLight
+          key={i}
+          position={[x, 0, 0]}
+          color={trimColor}
+          intensity={0.3}
+          distance={2}
+        />
+      ))}
     </group>
   );
 };
