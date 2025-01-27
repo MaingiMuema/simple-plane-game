@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
-import { Stars, Environment, useTexture } from '@react-three/drei';
+import { Stars, Environment, useTexture, Trail } from '@react-three/drei';
 import * as THREE from 'three';
 
 const Scene = () => {
@@ -32,22 +32,57 @@ const Scene = () => {
     speed: 0.5
   }), []);
 
-  // Initialize obstacles
+  // Initialize obstacles with different shapes and properties
   useMemo(() => {
-    const newObstacles = Array.from({ length: 50 }).map(() => ({
-      position: [
-        Math.random() * spaceRadius * 2 - spaceRadius,
-        Math.random() * spaceRadius * 2 - spaceRadius,
-        Math.random() * spaceRadius * 2 - spaceRadius
-      ],
-      rotation: [
-        Math.random() * Math.PI,
-        Math.random() * Math.PI,
-        Math.random() * Math.PI
-      ],
-      color: new THREE.Color().setHSL(Math.random(), 0.8, 0.6),
-      scale: Math.random() * 3 + 1
-    }));
+    const shapes = [
+      {
+        geometry: 'sphere',
+        args: [1, 32, 32],
+        material: 'asteroid',
+      },
+      {
+        geometry: 'octahedron',
+        args: [1.2],
+        material: 'crystal',
+      },
+      {
+        geometry: 'tetrahedron',
+        args: [1.5],
+        material: 'metallic',
+      },
+      {
+        geometry: 'icosahedron',
+        args: [1.3],
+        material: 'energy',
+      },
+    ];
+
+    const newObstacles = Array.from({ length: 50 }).map(() => {
+      const shape = shapes[Math.floor(Math.random() * shapes.length)];
+      const baseColor = new THREE.Color().setHSL(Math.random(), 0.8, 0.6);
+      const scale = Math.random() * 3 + 1;
+      
+      return {
+        position: [
+          Math.random() * spaceRadius * 2 - spaceRadius,
+          Math.random() * spaceRadius * 2 - spaceRadius,
+          Math.random() * spaceRadius * 2 - spaceRadius
+        ],
+        rotation: [
+          Math.random() * Math.PI,
+          Math.random() * Math.PI,
+          Math.random() * Math.PI
+        ],
+        shape: shape.geometry,
+        args: shape.args,
+        material: shape.material,
+        color: baseColor,
+        emissiveColor: baseColor.clone().multiplyScalar(0.5),
+        scale,
+        rotationSpeed: (Math.random() - 0.5) * 0.02,
+        pulseSpeed: Math.random() * 2 + 1,
+      };
+    });
     setObstacles(newObstacles);
   }, []);
 
@@ -69,7 +104,6 @@ const Scene = () => {
       return prevObstacles.map(obs => {
         const distance = new THREE.Vector3(...obs.position).distanceTo(camera.position);
         if (distance > spaceRadius) {
-          // Generate new position relative to camera
           const angle = Math.random() * Math.PI * 2;
           const radius = spaceRadius * 0.7;
           const heightOffset = Math.random() * spaceRadius - spaceRadius/2;
@@ -80,14 +114,16 @@ const Scene = () => {
               camera.position.y + heightOffset,
               camera.position.z + Math.sin(angle) * radius
             ],
-            rotation: [
-              Math.random() * Math.PI,
-              Math.random() * Math.PI,
-              Math.random() * Math.PI
-            ]
           };
         }
-        return obs;
+        return {
+          ...obs,
+          rotation: [
+            obs.rotation[0] + obs.rotationSpeed,
+            obs.rotation[1] + obs.rotationSpeed,
+            obs.rotation[2] + obs.rotationSpeed
+          ],
+        };
       });
     });
   });
@@ -144,30 +180,94 @@ const Scene = () => {
       </group>
 
       {/* Obstacles */}
-      {obstacles.map((obs, i) => (
-        <mesh
-          key={i}
-          position={obs.position}
-          rotation={obs.rotation}
-          scale={obs.scale}
-        >
-          <boxGeometry args={[2, 2, 2]} />
-          <meshStandardMaterial
-            color={obs.color}
-            emissive={obs.color}
-            emissiveIntensity={0.5}
-            metalness={0.8}
-            roughness={0.2}
-            transparent
-            opacity={0.8}
-          />
-          <pointLight
-            color={obs.color}
-            intensity={0.5}
-            distance={10}
-          />
-        </mesh>
-      ))}
+      {obstacles.map((obs, i) => {
+        const MaterialComponent = () => {
+          switch(obs.material) {
+            case 'asteroid':
+              return (
+                <meshStandardMaterial
+                  color={obs.color}
+                  roughness={0.8}
+                  metalness={0.2}
+                  bumpScale={0.5}
+                />
+              );
+            case 'crystal':
+              return (
+                <meshPhysicalMaterial
+                  color={obs.color}
+                  transmission={0.6}
+                  opacity={0.8}
+                  metalness={1}
+                  roughness={0.1}
+                  ior={1.5}
+                  thickness={0.5}
+                  transparent
+                />
+              );
+            case 'metallic':
+              return (
+                <meshStandardMaterial
+                  color={obs.color}
+                  metalness={0.9}
+                  roughness={0.1}
+                  emissive={obs.emissiveColor}
+                  emissiveIntensity={0.3}
+                />
+              );
+            case 'energy':
+              return (
+                <meshPhongMaterial
+                  color={obs.color}
+                  emissive={obs.emissiveColor}
+                  emissiveIntensity={0.8}
+                  transparent
+                  opacity={0.9}
+                  shininess={100}
+                />
+              );
+          }
+        };
+
+        const GeometryComponent = () => {
+          switch(obs.shape) {
+            case 'sphere':
+              return <sphereGeometry args={obs.args} />;
+            case 'octahedron':
+              return <octahedronGeometry args={obs.args} />;
+            case 'tetrahedron':
+              return <tetrahedronGeometry args={obs.args} />;
+            case 'icosahedron':
+              return <icosahedronGeometry args={obs.args} />;
+          }
+        };
+
+        return (
+          <group key={i}>
+            <Trail
+              width={2}
+              length={4}
+              color={obs.color}
+              attenuation={(t) => t * t}
+            >
+              <mesh
+                position={obs.position}
+                rotation={obs.rotation}
+                scale={obs.scale}
+              >
+                <GeometryComponent />
+                <MaterialComponent />
+              </mesh>
+            </Trail>
+            <pointLight
+              position={obs.position}
+              color={obs.color}
+              intensity={0.6}
+              distance={15}
+            />
+          </group>
+        );
+      })}
     </>
   );
 };

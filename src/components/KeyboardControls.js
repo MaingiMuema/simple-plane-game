@@ -14,8 +14,7 @@ const Spaceship = () => {
   const [engineGlow, setEngineGlow] = useState(0.5);
   const exhaustTrailLeftRef = useRef();
   const exhaustTrailRightRef = useRef();
-  const [shieldActive, setShieldActive] = useState(false);
-  const [lastShieldToggle, setLastShieldToggle] = useState(0); // Add this line
+  const [shieldPulse, setShieldPulse] = useState(0);
   const [holoOpacity, setHoloOpacity] = useState(0.6);
 
   // Get keyboard controls
@@ -25,7 +24,7 @@ const Spaceship = () => {
   const { camera } = useThree();
 
   // Movement parameters
-  const normalMaxSpeed = 1.0; // Rename maxSpeed to normalMaxSpeed
+  const maxSpeed = 1.0;
   const acceleration = 0.03;
   const deceleration = 0.01;
   const turnSpeed = 0.03; // Speed of turning
@@ -40,29 +39,18 @@ const Spaceship = () => {
     const ship = shipRef.current;
 
     // Get the current state of all controls
-    const { forward, backward, left, right, ascend, descend, shield } =
-      getKeys();
-
-    // Handle shield toggle with debounce
-    if (shield && state.clock.elapsedTime - lastShieldToggle > 0.3) {
-      // Add debounce
-      setShieldActive((prev) => !prev);
-      setLastShieldToggle(state.clock.elapsedTime);
-    }
-
-    // Calculate current max speed based on shield status
-    const currentMaxSpeed = shieldActive ? normalMaxSpeed * 10 : normalMaxSpeed;
+    const { forward, backward, left, right, ascend, descend } = getKeys();
 
     // Forward/Backward movement with momentum
     if (forward) {
-      velocity.z = Math.max(velocity.z - acceleration, -currentMaxSpeed);
-      setEngineGlow(shieldActive ? 2.5 : 1.5);
+      velocity.z = Math.max(velocity.z - acceleration, -maxSpeed); // Changed to negative
+      setEngineGlow(1.5);
     } else if (backward) {
-      velocity.z = Math.min(velocity.z + acceleration, currentMaxSpeed * 0.5); // Changed to positive
-      setEngineGlow(shieldActive ? 2.0 : 1.0);
+      velocity.z = Math.min(velocity.z + acceleration, maxSpeed * 0.5); // Changed to positive
+      setEngineGlow(1.0);
     } else {
       velocity.z *= 1 - deceleration;
-      setEngineGlow(shieldActive ? 1.0 : 0.5);
+      setEngineGlow(0.5);
     }
 
     // Update ship's direction and rotation
@@ -107,7 +95,7 @@ const Spaceship = () => {
     ship.position.y += hoverOffset;
 
     // Improved camera following
-    const speedFactor = Math.abs(velocity.z) / normalMaxSpeed;
+    const speedFactor = Math.abs(velocity.z) / maxSpeed;
     const baseCameraDistance = 15;
     const extraDistance = speedFactor * 10;
 
@@ -136,7 +124,7 @@ const Spaceship = () => {
     camera.lookAt(ship.position);
 
     // Update engine visual effects
-    const engineIntensity = Math.abs(velocity.z) / normalMaxSpeed;
+    const engineIntensity = Math.abs(velocity.z) / maxSpeed;
     setEngineGlow(0.5 + engineIntensity);
 
     // Add subtle pulsing to the neon lights
@@ -166,28 +154,21 @@ const Spaceship = () => {
   return (
     <group ref={shipRef} position={[0, 5, 0]} rotation={[0, Math.PI, 0]}>
       {/* Energy Shield Effect */}
-      {shieldActive && (
-        <mesh>
-          <sphereGeometry args={[2.5, 32, 32]} />
-          <MeshTransmissionMaterial
-            backside
-            samples={4}
-            thickness={0.5}
-            chromaticAberration={1}
-            transmission={0.9}
-            distortion={0.5}
-            color={shieldColor}
-            temporalDistortion={0.3}
-            distortionScale={0.5}
-            opacity={0.2}
-          />
-        </mesh>
-      )}
-
-      {/* Add shield glow effect when active */}
-      {shieldActive && (
-        <pointLight color={shieldColor} intensity={2} distance={5} decay={2} />
-      )}
+      {/*<mesh>
+        <sphereGeometry args={[2.5, 32, 32]} />
+        <MeshTransmissionMaterial
+          backside
+          samples={4}
+          thickness={0.5}
+          chromaticAberration={1}
+          transmission={0.9}
+          distortion={0.5}
+          color={shieldColor}
+          temporalDistortion={0.3}
+          distortionScale={0.5}
+          opacity={0.2}
+        />
+      </mesh>*/}
 
       {/* Enhanced Main Hull */}
       <mesh position={[0, 0, 0]}>
