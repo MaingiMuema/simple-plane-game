@@ -1,7 +1,7 @@
-import React, { useRef, useState } from 'react';
-import { useFrame, useThree } from '@react-three/fiber';
-import { useKeyboardControls } from '@react-three/drei';
-import * as THREE from 'three';
+import React, { useRef, useState } from "react";
+import { useFrame, useThree } from "@react-three/fiber";
+import { useKeyboardControls } from "@react-three/drei";
+import * as THREE from "three";
 
 const Spaceship = () => {
   const shipRef = useRef();
@@ -30,24 +30,17 @@ const Spaceship = () => {
     const ship = shipRef.current;
 
     // Get the current state of all controls
-    const {
-      forward,
-      backward,
-      left,
-      right,
-      ascend,
-      descend
-    } = getKeys();
+    const { forward, backward, left, right, ascend, descend } = getKeys();
 
     // Forward/Backward movement with momentum
     if (forward) {
-      velocity.z = Math.min(velocity.z + acceleration, maxSpeed);
+      velocity.z = Math.max(velocity.z - acceleration, -maxSpeed); // Changed to negative
       setEngineGlow(1.5);
     } else if (backward) {
-      velocity.z = Math.max(velocity.z - acceleration, -maxSpeed * 0.5);
+      velocity.z = Math.min(velocity.z + acceleration, maxSpeed * 0.5); // Changed to positive
       setEngineGlow(1.0);
     } else {
-      velocity.z *= (1 - deceleration);
+      velocity.z *= 1 - deceleration;
       setEngineGlow(0.5);
     }
 
@@ -70,7 +63,11 @@ const Spaceship = () => {
     ship.position.z += direction.current.z * velocity.z;
 
     // Smooth banking effect
-    ship.rotation.z = THREE.MathUtils.lerp(ship.rotation.z, targetRotationZ, 0.1);
+    ship.rotation.z = THREE.MathUtils.lerp(
+      ship.rotation.z,
+      targetRotationZ,
+      0.1
+    );
 
     // Vertical movement with momentum
     if (ascend) {
@@ -78,7 +75,7 @@ const Spaceship = () => {
     } else if (descend) {
       velocity.y = Math.max(velocity.y - acceleration, -ascendSpeed);
     } else {
-      velocity.y *= (1 - deceleration);
+      velocity.y *= 1 - deceleration;
     }
 
     // Apply vertical velocity
@@ -92,20 +89,20 @@ const Spaceship = () => {
     const speedFactor = Math.abs(velocity.z) / maxSpeed;
     const baseCameraDistance = 15;
     const extraDistance = speedFactor * 10;
-    
+
     // Calculate ideal camera position
     const idealOffset = new THREE.Vector3(
       0,
       6 + speedFactor * 3,
       baseCameraDistance + extraDistance
     ).applyQuaternion(ship.quaternion);
-    
+
     const targetCameraPos = ship.position.clone().add(idealOffset);
-    
+
     // Force immediate camera update if too far from ship
     const distanceToShip = camera.position.distanceTo(ship.position);
     const maxAllowedDistance = baseCameraDistance + extraDistance + 20;
-    
+
     if (distanceToShip > maxAllowedDistance) {
       // Teleport camera closer if it's too far
       camera.position.copy(targetCameraPos);
@@ -131,7 +128,7 @@ const Spaceship = () => {
       {/* Main fuselage */}
       <mesh position={[0, 0, 0]}>
         <cylinderGeometry args={[0.8, 1.2, 4, 8]} />
-        <meshStandardMaterial 
+        <meshStandardMaterial
           color={mainColor}
           metalness={0.8}
           roughness={0.2}
@@ -141,7 +138,7 @@ const Spaceship = () => {
       {/* Front nose cone */}
       <mesh position={[0, 0, -2]}>
         <coneGeometry args={[0.8, 2, 8]} />
-        <meshStandardMaterial 
+        <meshStandardMaterial
           color={mainColor}
           metalness={0.8}
           roughness={0.2}
@@ -153,7 +150,7 @@ const Spaceship = () => {
         {/* Left wing */}
         <mesh position={[-2, 0, 0]} rotation={[0, 0, Math.PI * 0.1]}>
           <boxGeometry args={[3, 0.1, 2]} />
-          <meshStandardMaterial 
+          <meshStandardMaterial
             color={mainColor}
             metalness={0.8}
             roughness={0.2}
@@ -162,7 +159,7 @@ const Spaceship = () => {
         {/* Right wing */}
         <mesh position={[2, 0, 0]} rotation={[0, 0, -Math.PI * 0.1]}>
           <boxGeometry args={[3, 0.1, 2]} />
-          <meshStandardMaterial 
+          <meshStandardMaterial
             color={mainColor}
             metalness={0.8}
             roughness={0.2}
@@ -175,7 +172,7 @@ const Spaceship = () => {
         {/* Left wing tip */}
         <mesh position={[-3.5, 0.3, 0]} rotation={[0, 0, Math.PI * 0.15]}>
           <boxGeometry args={[1, 0.1, 1]} />
-          <meshStandardMaterial 
+          <meshStandardMaterial
             color={accentColor}
             metalness={0.9}
             roughness={0.1}
@@ -184,7 +181,7 @@ const Spaceship = () => {
         {/* Right wing tip */}
         <mesh position={[3.5, 0.3, 0]} rotation={[0, 0, -Math.PI * 0.15]}>
           <boxGeometry args={[1, 0.1, 1]} />
-          <meshStandardMaterial 
+          <meshStandardMaterial
             color={accentColor}
             metalness={0.9}
             roughness={0.1}
@@ -195,8 +192,10 @@ const Spaceship = () => {
       {/* Cockpit */}
       <group position={[0, 0.5, -1]}>
         <mesh>
-          <sphereGeometry args={[0.4, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
-          <meshStandardMaterial 
+          <sphereGeometry
+            args={[0.4, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.5]}
+          />
+          <meshStandardMaterial
             color={glowColor}
             metalness={0.1}
             roughness={0.1}
@@ -211,7 +210,7 @@ const Spaceship = () => {
         {/* Left engine */}
         <mesh position={[-0.8, 0, 0]}>
           <cylinderGeometry args={[0.3, 0.4, 1, 8]} />
-          <meshStandardMaterial 
+          <meshStandardMaterial
             color={accentColor}
             metalness={0.9}
             roughness={0.1}
@@ -220,24 +219,24 @@ const Spaceship = () => {
         {/* Right engine */}
         <mesh position={[0.8, 0, 0]}>
           <cylinderGeometry args={[0.3, 0.4, 1, 8]} />
-          <meshStandardMaterial 
+          <meshStandardMaterial
             color={accentColor}
             metalness={0.9}
             roughness={0.1}
           />
         </mesh>
         {/* Dynamic engine glow */}
-        <pointLight 
-          position={[-0.8, 0, 0.5]} 
-          color="#ff4400" 
-          intensity={engineGlow} 
-          distance={3} 
+        <pointLight
+          position={[-0.8, 0, 0.5]}
+          color="#ff4400"
+          intensity={engineGlow}
+          distance={3}
         />
-        <pointLight 
-          position={[0.8, 0, 0.5]} 
-          color="#ff4400" 
-          intensity={engineGlow} 
-          distance={3} 
+        <pointLight
+          position={[0.8, 0, 0.5]}
+          color="#ff4400"
+          intensity={engineGlow}
+          distance={3}
         />
       </group>
 
@@ -247,7 +246,7 @@ const Spaceship = () => {
         {/* Left weapon mount */}
         <mesh position={[-1.5, -0.1, -0.5]}>
           <boxGeometry args={[0.2, 0.2, 0.8]} />
-          <meshStandardMaterial 
+          <meshStandardMaterial
             color={accentColor}
             metalness={0.9}
             roughness={0.1}
@@ -256,7 +255,7 @@ const Spaceship = () => {
         {/* Right weapon mount */}
         <mesh position={[1.5, -0.1, -0.5]}>
           <boxGeometry args={[0.2, 0.2, 0.8]} />
-          <meshStandardMaterial 
+          <meshStandardMaterial
             color={accentColor}
             metalness={0.9}
             roughness={0.1}
@@ -265,8 +264,18 @@ const Spaceship = () => {
       </group>
 
       {/* Ship lights */}
-      <pointLight position={[0, 0, -2]} color={glowColor} intensity={0.5} distance={3} />
-      <pointLight position={[0, 0.5, -1]} color={glowColor} intensity={0.3} distance={2} />
+      <pointLight
+        position={[0, 0, -2]}
+        color={glowColor}
+        intensity={0.5}
+        distance={3}
+      />
+      <pointLight
+        position={[0, 0.5, -1]}
+        color={glowColor}
+        intensity={0.3}
+        distance={2}
+      />
     </group>
   );
 };
