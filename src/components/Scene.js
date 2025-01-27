@@ -1,6 +1,8 @@
-import React, { useMemo, useRef, useState, useEffect } from 'react';
-import { useFrame, useLoader } from '@react-three/fiber';
-import { Stars, Environment, useTexture, Trail, Detailed } from '@react-three/drei';
+/* eslint-disable react/no-unknown-property */
+/* eslint-disable no-unused-vars */
+import React, { useRef, useState, useMemo } from 'react';
+import { useFrame } from "@react-three/fiber";
+import { Stars, Environment, useTexture, Detailed, PerspectiveCamera } from '@react-three/drei';
 import * as THREE from 'three';
 
 const Scene = () => {

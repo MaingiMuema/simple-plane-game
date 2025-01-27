@@ -1,4 +1,6 @@
-import React, { useRef, useState } from "react";
+/* eslint-disable react/no-unknown-property */
+/* eslint-disable no-unused-vars */
+import React, { useRef, useState, useEffect } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import {
   useKeyboardControls,
@@ -15,17 +17,17 @@ const Spaceship = () => {
   const exhaustTrailLeftRef = useRef();
   const exhaustTrailRightRef = useRef();
   const [shieldActive, setShieldActive] = useState(false);
-  const [lastShieldToggle, setLastShieldToggle] = useState(0); // Add this line
-  const [holoOpacity, setHoloOpacity] = useState(0.6);
+  const [lastShieldToggle, setLastShieldToggle] = useState(0);
+  const [holoOpacity] = useState(0);
 
   // Get keyboard controls
-  const [subscribeKeys, getKeys] = useKeyboardControls();
+  const [, getKeys] = useKeyboardControls();
 
-  // Get camera
-  const { camera } = useThree();
+  // Get camera and clock
+  const { camera, clock } = useThree();
 
   // Movement parameters
-  const normalMaxSpeed = 1.0; // Rename maxSpeed to normalMaxSpeed
+  const normalMaxSpeed = 1.0;
   const acceleration = 0.03;
   const deceleration = 0.01;
   const turnSpeed = 0.03; // Speed of turning
@@ -33,7 +35,7 @@ const Spaceship = () => {
   const tiltAngle = Math.PI * 0.15;
   const direction = useRef(new THREE.Vector3(0, 0, 1)); // Ship's forward direction
 
-  useFrame((state, delta) => {
+  useFrame(() => {
     if (!shipRef.current) return;
 
     const velocity = velocityRef.current;
@@ -44,10 +46,10 @@ const Spaceship = () => {
       getKeys();
 
     // Handle shield toggle with debounce
-    if (shield && state.clock.elapsedTime - lastShieldToggle > 0.3) {
+    if (shield && clock.elapsedTime - lastShieldToggle > 0.3) {
       // Add debounce
       setShieldActive((prev) => !prev);
-      setLastShieldToggle(state.clock.elapsedTime);
+      setLastShieldToggle(clock.elapsedTime);
     }
 
     // Calculate current max speed based on shield status
@@ -103,7 +105,7 @@ const Spaceship = () => {
     ship.position.y += velocity.y;
 
     // Add gentle hover effect
-    const hoverOffset = Math.sin(state.clock.elapsedTime * 2) * 0.02;
+    const hoverOffset = Math.sin(clock.elapsedTime * 2) * 0.02;
     ship.position.y += hoverOffset;
 
     // Improved camera following
@@ -140,7 +142,7 @@ const Spaceship = () => {
     setEngineGlow(0.5 + engineIntensity);
 
     // Add subtle pulsing to the neon lights
-    const pulseIntensity = Math.sin(state.clock.elapsedTime * 2) * 0.3 + 0.7;
+    const pulseIntensity = Math.sin(clock.elapsedTime * 2) * 0.3 + 0.7;
 
     // Update material colors if refs exist
     if (shipRef.current) {
@@ -160,8 +162,8 @@ const Spaceship = () => {
   const engineGlowColor = "#ff6600";
   const holoColor = "#00ffff";
   const energyColor = "#ff00ff";
-  const trimColor = "#00ff88"; // Added missing trim color
-  const panelColor = "#4d00ff"; // Added missing panel color
+  const trimColor = "#00ff88"; 
+  const panelColor = "#4d00ff"; 
 
   return (
     <group ref={shipRef} position={[0, 5, 0]} rotation={[0, Math.PI, 0]}>

@@ -1,0 +1,43 @@
+{
+  "extends": ["react-app"],
+  "rules": {
+    "react/no-unknown-property": ["error", { 
+      "ignore": [
+        "args",
+        "position",
+        "rotation",
+        "intensity",
+        "distance",
+        "attach",
+        "map",
+        "normalMap",
+        "specularMap",
+        "shininess",
+        "specular",
+        "transparent",
+        "depthWrite",
+        "side",
+        "roughness",
+        "metalness",
+        "bumpScale",
+        "transmission",
+        "thickness",
+        "ior",
+        "envMapIntensity",
+        "geometry",
+        "decay",
+        "blending",
+        "emissive",
+        "emissiveIntensity",
+        "userData",
+        "castShadow",
+        "receiveShadow"
+      ]
+    }],
+    "no-unused-vars": ["warn", { 
+      "argsIgnorePattern": "^_",
+      "varsIgnorePattern": "^_",
+      "caughtErrorsIgnorePattern": "^_"
+    }]
+  }
+}
