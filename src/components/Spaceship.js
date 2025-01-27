@@ -15,12 +15,13 @@ const Spaceship = () => {
   const { camera } = useThree();
 
   // Movement parameters
-  const maxSpeed = 1.0; // Increased max speed
-  const acceleration = 0.03; // Increased acceleration
+  const maxSpeed = 1.0;
+  const acceleration = 0.03;
   const deceleration = 0.01;
-  const rotationSpeed = 0.05; // Increased rotation speed
-  const ascendSpeed = 0.5; // Increased ascend speed
+  const turnSpeed = 0.03; // Speed of turning
+  const ascendSpeed = 0.5;
   const tiltAngle = Math.PI * 0.15;
+  const direction = useRef(new THREE.Vector3(0, 0, -1)); // Ship's forward direction
 
   useFrame((state, delta) => {
     if (!shipRef.current) return;
@@ -50,25 +51,25 @@ const Spaceship = () => {
       setEngineGlow(0.5);
     }
 
-    // Apply forward/backward velocity
-    ship.position.z += velocity.z;
-
-    // Left/Right movement with banking effect
-    let targetRotationY = 0;
+    // Update ship's direction and rotation
     let targetRotationZ = 0;
 
     if (left) {
-      ship.position.x -= rotationSpeed;
-      targetRotationY = rotationSpeed * 10;
+      ship.rotation.y += turnSpeed;
       targetRotationZ = tiltAngle;
     } else if (right) {
-      ship.position.x += rotationSpeed;
-      targetRotationY = -rotationSpeed * 10;
+      ship.rotation.y -= turnSpeed;
       targetRotationZ = -tiltAngle;
     }
 
-    // Smooth rotation interpolation
-    ship.rotation.y = THREE.MathUtils.lerp(ship.rotation.y, targetRotationY, 0.1);
+    // Update direction vector based on ship's rotation
+    direction.current.set(0, 0, -1).applyQuaternion(ship.quaternion);
+
+    // Move ship in its current direction
+    ship.position.x += direction.current.x * velocity.z;
+    ship.position.z += direction.current.z * velocity.z;
+
+    // Smooth banking effect
     ship.rotation.z = THREE.MathUtils.lerp(ship.rotation.z, targetRotationZ, 0.1);
 
     // Vertical movement with momentum
@@ -90,13 +91,16 @@ const Spaceship = () => {
     // Camera following with improved distance based on speed
     const speedFactor = Math.abs(velocity.z) / maxSpeed;
     const baseCameraDistance = 12;
-    const extraDistance = speedFactor * 8; // Camera pulls back as speed increases
+    const extraDistance = speedFactor * 8;
     
     const cameraOffset = new THREE.Vector3(
       0,
-      5 + speedFactor * 2, // Camera rises slightly with speed
+      5 + speedFactor * 2,
       baseCameraDistance + extraDistance
     );
+
+    // Rotate camera offset based on ship's rotation
+    cameraOffset.applyQuaternion(ship.quaternion);
     const targetCameraPos = ship.position.clone().add(cameraOffset);
     
     camera.position.lerp(targetCameraPos, 0.1);
