@@ -23,18 +23,18 @@ const Scene = () => {
 
   // Create stars for the background
   const starProps = useMemo(() => ({
-    radius: 300,
-    depth: 100,
-    count: 10000,
+    radius: 1000,
+    depth: 300,
+    count: 15000,
     factor: 4,
     saturation: 0,
     fade: true,
-    speed: 1
+    speed: 0.5
   }), []);
 
   // Initialize obstacles
   useMemo(() => {
-    const newObstacles = Array.from({ length: 30 }).map(() => ({
+    const newObstacles = Array.from({ length: 50 }).map(() => ({
       position: [
         Math.random() * spaceRadius * 2 - spaceRadius,
         Math.random() * spaceRadius * 2 - spaceRadius,
@@ -71,13 +71,19 @@ const Scene = () => {
         if (distance > spaceRadius) {
           // Generate new position relative to camera
           const angle = Math.random() * Math.PI * 2;
-          const radius = spaceRadius * 0.8;
+          const radius = spaceRadius * 0.7;
+          const heightOffset = Math.random() * spaceRadius - spaceRadius/2;
           return {
             ...obs,
             position: [
               camera.position.x + Math.cos(angle) * radius,
-              camera.position.y + (Math.random() * spaceRadius - spaceRadius/2),
+              camera.position.y + heightOffset,
               camera.position.z + Math.sin(angle) * radius
+            ],
+            rotation: [
+              Math.random() * Math.PI,
+              Math.random() * Math.PI,
+              Math.random() * Math.PI
             ]
           };
         }
@@ -90,15 +96,15 @@ const Scene = () => {
     <>
       {/* Environment and Lighting */}
       <Environment preset="night" />
-      <ambientLight intensity={0.3} />
-      <pointLight position={[10, 10, 10]} intensity={1.0} />
-      <pointLight position={[-10, -10, -10]} intensity={0.5} color="#2ef" />
+      <ambientLight intensity={0.4} />
+      <pointLight position={[10, 10, 10]} intensity={1.2} />
+      <pointLight position={[-10, -10, -10]} intensity={0.8} color="#2ef" />
       
       {/* Stars background */}
       <Stars {...starProps} />
       
       {/* Space fog */}
-      <fog attach="fog" args={['#000', 50, 200]} />
+      <fog attach="fog" args={['#000', 100, 400]} />
       
       {/* Earth as an obstacle */}
       <group position={[30, 20, -40]} scale={0.3}>

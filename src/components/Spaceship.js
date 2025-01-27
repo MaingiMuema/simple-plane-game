@@ -88,22 +88,33 @@ const Spaceship = () => {
     const hoverOffset = Math.sin(state.clock.elapsedTime * 2) * 0.02;
     ship.position.y += hoverOffset;
 
-    // Camera following with improved distance based on speed
+    // Improved camera following
     const speedFactor = Math.abs(velocity.z) / maxSpeed;
-    const baseCameraDistance = 12;
-    const extraDistance = speedFactor * 8;
+    const baseCameraDistance = 15;
+    const extraDistance = speedFactor * 10;
     
-    const cameraOffset = new THREE.Vector3(
+    // Calculate ideal camera position
+    const idealOffset = new THREE.Vector3(
       0,
-      5 + speedFactor * 2,
+      6 + speedFactor * 3,
       baseCameraDistance + extraDistance
-    );
-
-    // Rotate camera offset based on ship's rotation
-    cameraOffset.applyQuaternion(ship.quaternion);
-    const targetCameraPos = ship.position.clone().add(cameraOffset);
+    ).applyQuaternion(ship.quaternion);
     
-    camera.position.lerp(targetCameraPos, 0.1);
+    const targetCameraPos = ship.position.clone().add(idealOffset);
+    
+    // Force immediate camera update if too far from ship
+    const distanceToShip = camera.position.distanceTo(ship.position);
+    const maxAllowedDistance = baseCameraDistance + extraDistance + 20;
+    
+    if (distanceToShip > maxAllowedDistance) {
+      // Teleport camera closer if it's too far
+      camera.position.copy(targetCameraPos);
+    } else {
+      // Smooth camera movement
+      camera.position.lerp(targetCameraPos, 0.1);
+    }
+
+    // Ensure camera always looks at ship
     camera.lookAt(ship.position);
 
     // Update engine visual effects
