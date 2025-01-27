@@ -133,36 +133,34 @@ const Spaceship = () => {
     }
   });
 
-  // Updated color scheme with more vibrant base color
-  const mainColor = "#2f1b45"; // Rich deep purple base (option 1)
-  // const mainColor = "#1b3045";  // Deep navy blue base (option 2)
-  // const mainColor = "#451b2f";  // Deep burgundy base (option 3)
-  const accentColor = "#ff2277"; // Neon pink accent
+  // Updated color scheme with more vibrant colors
+  const mainColor = "#0dcdeb"; // Deep metallic blue base
+  const accentColor = "#ff00ff"; // Bright magenta accent
   const glowColor = "#00ffff"; // Cyan glow
-  const panelColor = "#4d00ff"; // Deep purple panels
-  const engineGlowColor = "#ff3300"; // Orange engine glow
+  const panelColor = "#4d00ff"; // Bright purple panels
+  const engineGlowColor = "#ff4400"; // Bright orange engine glow
   const trimColor = "#00ff88"; // Neon green trim
 
   return (
     <group ref={shipRef} position={[0, 5, 0]} rotation={[0, Math.PI, 0]}>
-      {/* Main fuselage with neon trim */}
+      {/* Main fuselage with enhanced metallic finish */}
       <mesh position={[0, 0, 0]}>
         <cylinderGeometry args={[0.8, 1.2, 4, 12]} />
         <meshStandardMaterial
           color={mainColor}
-          metalness={0.9}
-          roughness={0.3}
-          envMapIntensity={2}
+          metalness={1}
+          roughness={0.2}
+          envMapIntensity={3}
         />
       </mesh>
 
-      {/* Neon trim rings */}
+      {/* Enhanced neon trim rings with stronger glow */}
       <mesh position={[0, 0, -1]}>
         <torusGeometry args={[0.9, 0.02, 16, 32]} />
         <meshStandardMaterial
           color={trimColor}
           emissive={trimColor}
-          emissiveIntensity={1}
+          emissiveIntensity={2}
           metalness={0.9}
           roughness={0.2}
           userData={{ isNeon: true }}
@@ -352,46 +350,46 @@ const Spaceship = () => {
         ))}
       </group>
 
-      {/* Enhanced ship lighting */}
+      {/* Enhanced ship ambient lighting */}
       <pointLight
         position={[0, 0, -2]}
         color={glowColor}
-        intensity={0.8}
-        distance={4}
+        intensity={1.2}
+        distance={5}
       />
       <pointLight
         position={[0, 0.5, -1]}
         color={glowColor}
-        intensity={0.5}
-        distance={3}
+        intensity={0.8}
+        distance={4}
       />
 
-      {/* Navigation lights */}
+      {/* Enhanced navigation lights */}
       <pointLight
         position={[-2, 0, 0]}
         color="#ff0000"
-        intensity={0.5}
-        distance={2}
+        intensity={1}
+        distance={3}
       />
       <pointLight
         position={[2, 0, 0]}
         color="#00ff00"
-        intensity={0.5}
-        distance={2}
+        intensity={1}
+        distance={3}
       />
 
-      {/* Accent lighting */}
+      {/* Additional rim lighting for contrast */}
       <pointLight
-        position={[0, 1, 0]}
-        color={accentColor}
+        position={[0, 2, 0]}
+        color="#ffffff"
         intensity={0.5}
-        distance={3}
+        distance={4}
       />
       <pointLight
-        position={[0, -1, 0]}
-        color={panelColor}
+        position={[0, -2, 0]}
+        color="#ffffff"
         intensity={0.5}
-        distance={3}
+        distance={4}
       />
 
       {/* Wing trim lights */}
