@@ -1,6 +1,7 @@
 /* eslint-disable react/no-unknown-property */
 /* eslint-disable no-unused-vars */
 import React, { useRef, useState, useEffect } from "react";
+import PropTypes from "prop-types";
 import { useFrame, useThree } from "@react-three/fiber";
 import {
   useKeyboardControls,
@@ -9,8 +10,12 @@ import {
   MeshTransmissionMaterial,
 } from "@react-three/drei";
 import * as THREE from "three";
+import {
+  checkSphereCollision,
+  calculateCollisionResponse,
+} from "../utils/collisionUtils";
 
-const Spaceship = () => {
+const Spaceship = ({ obstacles = [] }) => {
   const shipRef = useRef();
   const velocityRef = useRef(new THREE.Vector3(0, 0, 0));
   const [engineGlow, setEngineGlow] = useState(0.5);
@@ -19,6 +24,11 @@ const Spaceship = () => {
   const [shieldActive, setShieldActive] = useState(false);
   const [lastShieldToggle, setLastShieldToggle] = useState(0);
   const [holoOpacity] = useState(0);
+  const [isColliding, setIsColliding] = useState(false);
+  const [collisionCooldown, setCollisionCooldown] = useState(0);
+  const [earthColliding, setEarthColliding] = useState(false);
+  const [gravityEffect, setGravityEffect] = useState(new THREE.Vector3());
+  const shipRadius = 2; // Approximate ship collision radius
 
   // Get keyboard controls
   const [, getKeys] = useKeyboardControls();
@@ -152,6 +162,99 @@ const Spaceship = () => {
         }
       });
     }
+
+    // Enhanced collision detection
+    let collisionResponse = new THREE.Vector3();
+    let isCollidingWithEarth = false;
+
+    obstacles.forEach((obstacle) => {
+      const isEarthObstacle = obstacle.type === "earth";
+      const collisionDetected = checkSphereCollision(
+        [ship.position.x, ship.position.y, ship.position.z],
+        obstacle.position,
+        shipRadius,
+        obstacle.baseRadius * obstacle.scale
+      );
+
+      if (collisionDetected) {
+        // Calculate base collision response
+        const response = calculateCollisionResponse(
+          [ship.position.x, ship.position.y, ship.position.z],
+          obstacle.position,
+          isEarthObstacle ? 3 : 2 // Stronger response for Earth
+        );
+
+        if (isEarthObstacle) {
+          isCollidingWithEarth = true;
+
+          // Add atmospheric entry effects
+          if (!earthColliding) {
+            // Initial impact
+            velocity.multiplyScalar(0.3); // Stronger velocity reduction
+            setEarthColliding(true);
+          }
+
+          // Calculate gravity effect
+          const gravityDirection = new THREE.Vector3()
+            .subVectors(new THREE.Vector3(...obstacle.position), ship.position)
+            .normalize();
+          setGravityEffect(gravityDirection.multiplyScalar(0.05));
+
+          // Scale response based on shield
+          response.multiplyScalar(shieldActive ? 0.4 : 1);
+        } else if (collisionCooldown <= 0) {
+          // Normal asteroid collision handling
+          setIsColliding(true);
+          setCollisionCooldown(1);
+          velocity.multiplyScalar(shieldActive ? 0.7 : 0.5);
+        }
+
+        collisionResponse.add(response);
+      }
+    });
+
+    // Update Earth collision state
+    if (!isCollidingWithEarth && earthColliding) {
+      setEarthColliding(false);
+      setGravityEffect(new THREE.Vector3());
+    }
+
+    // Apply gravity effect
+    if (earthColliding) {
+      ship.position.add(gravityEffect);
+      velocity.add(gravityEffect);
+    }
+
+    // Apply collision response
+    if (collisionResponse.length() > 0) {
+      ship.position.add(collisionResponse);
+    }
+
+    // Add Earth collision visual effects
+    if (earthColliding) {
+      const atmosphereGlow = Math.sin(clock.elapsedTime * 10) * 0.5 + 0.5;
+      shipRef.current.traverse((child) => {
+        if (child.isMesh && child.material.userData.isNeon) {
+          child.material.emissiveIntensity = atmosphereGlow * 5;
+        }
+      });
+    }
+
+    // Update collision cooldown
+    if (collisionCooldown > 0) {
+      setCollisionCooldown((prev) => Math.max(0, prev - clock.elapsedTime));
+    } else {
+      setIsColliding(false);
+    }
+
+    // Add collision visual effect
+    if (isColliding) {
+      shipRef.current.traverse((child) => {
+        if (child.isMesh && child.material.userData.isNeon) {
+          child.material.emissiveIntensity = 3;
+        }
+      });
+    }
   });
 
   // Updated color scheme with more vibrant colors
@@ -162,8 +265,8 @@ const Spaceship = () => {
   const engineGlowColor = "#ff6600";
   const holoColor = "#00ffff";
   const energyColor = "#ff00ff";
-  const trimColor = "#00ff88"; 
-  const panelColor = "#4d00ff"; 
+  const trimColor = "#00ff88";
+  const panelColor = "#4d00ff";
 
   return (
     <group ref={shipRef} position={[0, 5, 0]} rotation={[0, Math.PI, 0]}>
@@ -550,8 +653,45 @@ const Spaceship = () => {
           distance={2}
         />
       ))}
+
+      {/* Add collision effect flash */}
+      {isColliding && (
+        <pointLight color="#ff0000" intensity={5} distance={10} decay={2} />
+      )}
+
+      {/* Add atmospheric entry effect */}
+      {earthColliding && (
+        <>
+          <pointLight color="#ff4400" intensity={3} distance={5} decay={2} />
+          <mesh>
+            <sphereGeometry args={[2.2, 16, 16]} />
+            <meshBasicMaterial
+              color="#ff2200"
+              transparent
+              opacity={0.2}
+              blending={THREE.AdditiveBlending}
+            />
+          </mesh>
+        </>
+      )}
     </group>
   );
+};
+
+Spaceship.propTypes = {
+  obstacles: PropTypes.arrayOf(
+    PropTypes.shape({
+      position: PropTypes.arrayOf(PropTypes.number).isRequired,
+      baseRadius: PropTypes.number.isRequired,
+      scale: PropTypes.number.isRequired,
+      type: PropTypes.string,
+      isEarth: PropTypes.bool,
+    })
+  ),
+};
+
+Spaceship.defaultProps = {
+  obstacles: [],
 };
 
 export default Spaceship;

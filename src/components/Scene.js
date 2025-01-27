@@ -1,51 +1,59 @@
 /* eslint-disable react/no-unknown-property */
 /* eslint-disable no-unused-vars */
-import React, { useRef, useState, useMemo } from 'react';
+import React, { useRef, useState, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
-import { Stars, Environment, useTexture, Detailed, PerspectiveCamera } from '@react-three/drei';
-import * as THREE from 'three';
+import {
+  Stars,
+  Environment,
+  useTexture,
+  Detailed,
+  PerspectiveCamera,
+} from "@react-three/drei";
+import * as THREE from "three";
+import PropTypes from "prop-types";
 
-const Scene = () => {
+const Scene = ({ onObstaclesUpdate }) => {
   const earthRef = useRef();
   const cloudsRef = useRef();
   const [obstacles, setObstacles] = useState([]);
   const spaceRadius = 100; // Radius of active space around player
 
   // Load Earth textures
-  const [
-    colorMap,
-    normalMap,
-    specularMap,
-    cloudsMap
-  ] = useTexture([
-    '/textures/earth_daymap.jpg',
-    '/textures/earth_normal_map.jpg',
-    '/textures/earth_specular_map.jpg',
+  const [colorMap, normalMap, specularMap, cloudsMap] = useTexture([
+    "/textures/earth_daymap.jpg",
+    "/textures/earth_normal_map.jpg",
+    "/textures/earth_specular_map.jpg",
   ]);
 
   // Load asteroid textures with error handling
-  const asteroidTexture = useTexture('/textures/asteroids/asteroid_diffuse.jpg', (texture) => {
-    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
-    texture.repeat.set(2, 2);
-  });
+  const asteroidTexture = useTexture(
+    "/textures/asteroids/asteroid_diffuse.jpg",
+    (texture) => {
+      texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+      texture.repeat.set(2, 2);
+    }
+  );
 
   // Create stars for the background
-  const starProps = useMemo(() => ({
-    radius: 1000,
-    depth: 300,
-    count: 15000,
-    factor: 4,
-    saturation: 0,
-    fade: true,
-    speed: 0.5
-  }), []);
+  const starProps = useMemo(
+    () => ({
+      radius: 1000,
+      depth: 300,
+      count: 15000,
+      factor: 4,
+      saturation: 0,
+      fade: true,
+      speed: 0.5,
+    }),
+    []
+  );
 
   // Create deformed geometry for asteroids
   const createAsteroidGeometry = (radius, detail, seed = 0) => {
     const geometry = new THREE.IcosahedronGeometry(radius, detail);
     const pos = geometry.attributes.position;
     const vec = new THREE.Vector3();
-    
+
     // Pseudo-random function based on seed
     const random = (x, y, z) => {
       const dot = x * 12.9898 + y * 78.233 + z * 37.719 + seed;
@@ -57,19 +65,21 @@ const Scene = () => {
     for (let i = 0; i < pos.count; i++) {
       vec.fromBufferAttribute(pos, i);
       const distance = vec.length();
-      
+
       // Generate multiple layers of noise using our seeded random function
-      const x = vec.x * 2, y = vec.y * 2, z = vec.z * 2;
+      const x = vec.x * 2,
+        y = vec.y * 2,
+        z = vec.z * 2;
       let noise1 = (random(x, y, z) - 0.5) * 0.15;
       let noise2 = (random(x * 2, y * 2, z * 2) - 0.5) * 0.1;
       let noise3 = (random(x * 4, y * 4, z * 4) - 0.5) * 0.05;
-      
+
       const totalNoise = noise1 + noise2 + noise3;
       vec.normalize().multiplyScalar(distance * (1 + totalNoise));
-      
+
       pos.setXYZ(i, vec.x, vec.y, vec.z);
     }
-    
+
     geometry.computeVertexNormals();
     return geometry;
   };
@@ -77,15 +87,15 @@ const Scene = () => {
   // Pre-generate asteroid geometries with more variations
   const asteroidGeometries = useMemo(() => {
     const geometries = {
-      large: Array(8).fill(0).map((_, i) => 
-        createAsteroidGeometry(2, 3, i)
-      ),
-      medium: Array(8).fill(0).map((_, i) => 
-        createAsteroidGeometry(1.5, 2, i + 8)
-      ),
-      small: Array(8).fill(0).map((_, i) => 
-        createAsteroidGeometry(1, 2, i + 16)
-      )
+      large: Array(8)
+        .fill(0)
+        .map((_, i) => createAsteroidGeometry(2, 3, i)),
+      medium: Array(8)
+        .fill(0)
+        .map((_, i) => createAsteroidGeometry(1.5, 2, i + 8)),
+      small: Array(8)
+        .fill(0)
+        .map((_, i) => createAsteroidGeometry(1, 2, i + 16)),
     };
     return geometries;
   }, []);
@@ -94,45 +104,46 @@ const Scene = () => {
   useMemo(() => {
     const asteroidTypes = [
       {
-        name: 'large',
+        name: "large",
         baseRadius: 2,
         detail: 3,
-        material: 'rocky',
+        material: "rocky",
       },
       {
-        name: 'medium',
+        name: "medium",
         baseRadius: 1.5,
         detail: 2,
-        material: 'metallic',
+        material: "metallic",
       },
       {
-        name: 'small',
+        name: "small",
         baseRadius: 1,
         detail: 2,
-        material: 'icy',
-      }
+        material: "icy",
+      },
     ];
 
     const newObstacles = Array.from({ length: 50 }).map(() => {
-      const type = asteroidTypes[Math.floor(Math.random() * asteroidTypes.length)];
+      const type =
+        asteroidTypes[Math.floor(Math.random() * asteroidTypes.length)];
       const baseColor = new THREE.Color().setHSL(
         Math.random() * 0.1 + 0.05, // Reddish-brown hue
-        Math.random() * 0.3 + 0.5,  // Medium-high saturation
-        Math.random() * 0.2 + 0.2   // Low-medium lightness
+        Math.random() * 0.3 + 0.5, // Medium-high saturation
+        Math.random() * 0.2 + 0.2 // Low-medium lightness
       );
-      
+
       const scale = Math.random() * 0.5 + 0.5; // More controlled scale variation
-      
+
       return {
         position: [
           Math.random() * spaceRadius * 2 - spaceRadius,
           Math.random() * spaceRadius * 2 - spaceRadius,
-          Math.random() * spaceRadius * 2 - spaceRadius
+          Math.random() * spaceRadius * 2 - spaceRadius,
         ],
         rotation: [
           Math.random() * Math.PI,
           Math.random() * Math.PI,
-          Math.random() * Math.PI
+          Math.random() * Math.PI,
         ],
         type: type.name,
         baseRadius: type.baseRadius,
@@ -147,9 +158,20 @@ const Scene = () => {
     setObstacles(newObstacles);
   }, []);
 
+  // Add Earth parameters
+  const earthParams = useMemo(
+    () => ({
+      position: [30, 20, -40],
+      scale: 0.3,
+      radius: 10, // Base radius before scale
+      collisionRadius: 3, // Effective collision radius after scale
+    }),
+    []
+  );
+
   useFrame(({ clock, camera }) => {
     const elapsedTime = clock.getElapsedTime();
-    
+
     // Rotate Earth
     if (earthRef.current) {
       earthRef.current.rotation.y = elapsedTime * 0.05;
@@ -161,19 +183,21 @@ const Scene = () => {
     }
 
     // Reposition obstacles that are too far from the camera
-    setObstacles(prevObstacles => {
-      return prevObstacles.map(obs => {
-        const distance = new THREE.Vector3(...obs.position).distanceTo(camera.position);
+    setObstacles((prevObstacles) => {
+      const updatedObstacles = prevObstacles.map((obs) => {
+        const distance = new THREE.Vector3(...obs.position).distanceTo(
+          camera.position
+        );
         if (distance > spaceRadius) {
           const angle = Math.random() * Math.PI * 2;
           const radius = spaceRadius * 0.7;
-          const heightOffset = Math.random() * spaceRadius - spaceRadius/2;
+          const heightOffset = Math.random() * spaceRadius - spaceRadius / 2;
           return {
             ...obs,
             position: [
               camera.position.x + Math.cos(angle) * radius,
               camera.position.y + heightOffset,
-              camera.position.z + Math.sin(angle) * radius
+              camera.position.z + Math.sin(angle) * radius,
             ],
           };
         }
@@ -182,10 +206,22 @@ const Scene = () => {
           rotation: [
             obs.rotation[0] + obs.rotationSpeed,
             obs.rotation[1] + obs.rotationSpeed,
-            obs.rotation[2] + obs.rotationSpeed
+            obs.rotation[2] + obs.rotationSpeed,
           ],
         };
       });
+
+      // Add Earth as a special obstacle
+      const earthObstacle = {
+        position: earthParams.position,
+        baseRadius: earthParams.collisionRadius,
+        scale: 1,
+        type: "earth",
+        isEarth: true,
+      };
+
+      onObstaclesUpdate([...updatedObstacles, earthObstacle]);
+      return updatedObstacles;
     });
   });
 
@@ -196,15 +232,15 @@ const Scene = () => {
       <ambientLight intensity={0.4} />
       <pointLight position={[10, 10, 10]} intensity={1.2} />
       <pointLight position={[-10, -10, -10]} intensity={0.8} color="#2ef" />
-      
+
       {/* Stars background */}
       <Stars {...starProps} />
-      
+
       {/* Space fog */}
-      <fog attach="fog" args={['#000', 100, 400]} />
-      
+      <fog attach="fog" args={["#000", 100, 400]} />
+
       {/* Earth as an obstacle */}
-      <group position={[30, 20, -40]} scale={0.3}>
+      <group position={earthParams.position} scale={earthParams.scale}>
         {/* Main Earth sphere */}
         <mesh ref={earthRef}>
           <sphereGeometry args={[10, 64, 64]} />
@@ -243,8 +279,8 @@ const Scene = () => {
       {/* Obstacles */}
       {obstacles.map((obs, i) => {
         const AsteroidMaterial = () => {
-          switch(obs.material) {
-            case 'rocky':
+          switch (obs.material) {
+            case "rocky":
               return (
                 <meshStandardMaterial
                   map={asteroidTexture}
@@ -254,7 +290,7 @@ const Scene = () => {
                   bumpScale={0.5}
                 />
               );
-            case 'metallic':
+            case "metallic":
               return (
                 <meshStandardMaterial
                   map={asteroidTexture}
@@ -264,7 +300,7 @@ const Scene = () => {
                   envMapIntensity={1}
                 />
               );
-            case 'icy':
+            case "icy":
               return (
                 <meshPhysicalMaterial
                   map={asteroidTexture}
@@ -324,6 +360,10 @@ const Scene = () => {
       })}
     </>
   );
+};
+
+Scene.propTypes = {
+  onObstaclesUpdate: PropTypes.func.isRequired,
 };
 
 export default Scene;

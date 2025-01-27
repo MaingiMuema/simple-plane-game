@@ -1,5 +1,6 @@
+/* eslint-disable no-unused-vars */
 /* eslint-disable react/no-unknown-property */
-import React, { Suspense, useState, useEffect } from "react";
+import React, { Suspense, useState, useEffect, useRef } from "react";
 import { Canvas } from "@react-three/fiber";
 import { Stars, KeyboardControls, OrbitControls } from "@react-three/drei";
 import Spaceship from "./Spaceship.js";
@@ -8,6 +9,7 @@ import LoadingScreen from "./LoadingScreen.js";
 
 const Game = () => {
   const [loadingProgress, setLoadingProgress] = useState(0);
+  const [obstacles, setObstacles] = useState([]);
 
   useEffect(() => {
     // Simulate loading progress
@@ -51,8 +53,8 @@ const Game = () => {
                 maxDistance={100}
                 minDistance={15}
               />
-              <Scene />
-              <Spaceship />
+              <Scene onObstaclesUpdate={setObstacles} />
+              <Spaceship obstacles={obstacles} />
             </Suspense>
           </Canvas>
         </div>
