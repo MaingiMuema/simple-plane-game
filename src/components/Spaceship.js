@@ -21,7 +21,7 @@ const Spaceship = () => {
   const turnSpeed = 0.03; // Speed of turning
   const ascendSpeed = 0.5;
   const tiltAngle = Math.PI * 0.15;
-  const direction = useRef(new THREE.Vector3(0, 0, -1)); // Ship's forward direction
+  const direction = useRef(new THREE.Vector3(0, 0, 1)); // Ship's forward direction
 
   useFrame((state, delta) => {
     if (!shipRef.current) return;
@@ -41,10 +41,10 @@ const Spaceship = () => {
 
     // Forward/Backward movement with momentum
     if (forward) {
-      velocity.z = Math.max(velocity.z - acceleration, -maxSpeed);
+      velocity.z = Math.min(velocity.z + acceleration, maxSpeed);
       setEngineGlow(1.5);
     } else if (backward) {
-      velocity.z = Math.min(velocity.z + acceleration, maxSpeed * 0.5);
+      velocity.z = Math.max(velocity.z - acceleration, -maxSpeed * 0.5);
       setEngineGlow(1.0);
     } else {
       velocity.z *= (1 - deceleration);
@@ -63,7 +63,7 @@ const Spaceship = () => {
     }
 
     // Update direction vector based on ship's rotation
-    direction.current.set(0, 0, -1).applyQuaternion(ship.quaternion);
+    direction.current.set(0, 0, 1).applyQuaternion(ship.quaternion);
 
     // Move ship in its current direction
     ship.position.x += direction.current.x * velocity.z;
