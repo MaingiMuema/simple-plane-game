@@ -1,12 +1,14 @@
 import React, { useRef, useState } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
-import { useKeyboardControls } from "@react-three/drei";
+import { useKeyboardControls, Trail, useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 
 const Spaceship = () => {
   const shipRef = useRef();
   const velocityRef = useRef(new THREE.Vector3(0, 0, 0));
   const [engineGlow, setEngineGlow] = useState(0.5);
+  const exhaustTrailLeftRef = useRef();
+  const exhaustTrailRightRef = useRef();
 
   // Get keyboard controls
   const [subscribeKeys, getKeys] = useKeyboardControls();
@@ -119,161 +121,225 @@ const Spaceship = () => {
     setEngineGlow(0.5 + engineIntensity);
   });
 
-  const mainColor = "#e0e0e0";
-  const accentColor = "#2a2a2a";
-  const glowColor = "#00aaff";
+  const mainColor = "#3b4a57"; // Darker metallic base
+  const accentColor = "#1a1a1a"; // Darker accent
+  const glowColor = "#40a3ff"; // Brighter blue glow
+  const panelColor = "#526370"; // Slightly lighter than main for panels
 
   return (
     <group ref={shipRef} position={[0, 5, 0]} rotation={[0, Math.PI, 0]}>
-      {/* Main fuselage */}
+      {/* Enhanced Main fuselage */}
       <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[0.8, 1.2, 4, 8]} />
+        <cylinderGeometry args={[0.8, 1.2, 4, 12]} />
         <meshStandardMaterial
           color={mainColor}
-          metalness={0.8}
-          roughness={0.2}
+          metalness={0.9}
+          roughness={0.3}
+          envMapIntensity={1.5}
         />
       </mesh>
 
-      {/* Front nose cone */}
+      {/* Improved nose cone with panels */}
       <mesh position={[0, 0, -2]}>
-        <coneGeometry args={[0.8, 2, 8]} />
+        <coneGeometry args={[0.8, 2, 12]} />
         <meshStandardMaterial
           color={mainColor}
-          metalness={0.8}
-          roughness={0.2}
+          metalness={0.9}
+          roughness={0.3}
+          envMapIntensity={1.5}
         />
       </mesh>
 
-      {/* Main wings */}
+      {/* Panel details on nose */}
+      {[0, 1, 2, 3].map((i) => (
+        <mesh
+          key={i}
+          position={[0, 0, -1.5]}
+          rotation={[0, (i * Math.PI) / 2, 0]}
+        >
+          <planeGeometry args={[0.4, 1]} />
+          <meshStandardMaterial
+            color={panelColor}
+            metalness={0.8}
+            roughness={0.4}
+          />
+        </mesh>
+      ))}
+
+      {/* Enhanced wings with beveled edges */}
       <group position={[0, 0, 0]}>
         {/* Left wing */}
         <mesh position={[-2, 0, 0]} rotation={[0, 0, Math.PI * 0.1]}>
-          <boxGeometry args={[3, 0.1, 2]} />
+          <boxGeometry args={[3, 0.15, 2]} />
           <meshStandardMaterial
             color={mainColor}
-            metalness={0.8}
-            roughness={0.2}
+            metalness={0.9}
+            roughness={0.3}
+            envMapIntensity={1.5}
           />
         </mesh>
-        {/* Right wing */}
+        {/* Wing panel details */}
+        <mesh position={[-2, 0.08, 0]} rotation={[0, 0, Math.PI * 0.1]}>
+          <planeGeometry args={[2.5, 1.5]} />
+          <meshStandardMaterial
+            color={panelColor}
+            metalness={0.8}
+            roughness={0.4}
+          />
+        </mesh>
+        {/* Mirror for right wing */}
         <mesh position={[2, 0, 0]} rotation={[0, 0, -Math.PI * 0.1]}>
-          <boxGeometry args={[3, 0.1, 2]} />
+          <boxGeometry args={[3, 0.15, 2]} />
           <meshStandardMaterial
             color={mainColor}
+            metalness={0.9}
+            roughness={0.3}
+            envMapIntensity={1.5}
+          />
+        </mesh>
+        <mesh position={[2, 0.08, 0]} rotation={[0, 0, -Math.PI * 0.1]}>
+          <planeGeometry args={[2.5, 1.5]} />
+          <meshStandardMaterial
+            color={panelColor}
             metalness={0.8}
-            roughness={0.2}
+            roughness={0.4}
           />
         </mesh>
       </group>
 
-      {/* Wing tips */}
-      <group>
-        {/* Left wing tip */}
-        <mesh position={[-3.5, 0.3, 0]} rotation={[0, 0, Math.PI * 0.15]}>
-          <boxGeometry args={[1, 0.1, 1]} />
-          <meshStandardMaterial
-            color={accentColor}
-            metalness={0.9}
-            roughness={0.1}
-          />
-        </mesh>
-        {/* Right wing tip */}
-        <mesh position={[3.5, 0.3, 0]} rotation={[0, 0, -Math.PI * 0.15]}>
-          <boxGeometry args={[1, 0.1, 1]} />
-          <meshStandardMaterial
-            color={accentColor}
-            metalness={0.9}
-            roughness={0.1}
-          />
-        </mesh>
-      </group>
-
-      {/* Cockpit */}
+      {/* Enhanced cockpit with multi-layer glass effect */}
       <group position={[0, 0.5, -1]}>
         <mesh>
           <sphereGeometry
-            args={[0.4, 16, 16, 0, Math.PI * 2, 0, Math.PI * 0.5]}
+            args={[0.4, 24, 24, 0, Math.PI * 2, 0, Math.PI * 0.5]}
           />
-          <meshStandardMaterial
+          <meshPhysicalMaterial
             color={glowColor}
             metalness={0.1}
             roughness={0.1}
+            transmission={0.9}
+            thickness={0.5}
             opacity={0.7}
+            transparent={true}
+          />
+        </mesh>
+        <mesh scale={0.98}>
+          <sphereGeometry
+            args={[0.4, 24, 24, 0, Math.PI * 2, 0, Math.PI * 0.5]}
+          />
+          <meshPhysicalMaterial
+            color={glowColor}
+            metalness={0.1}
+            roughness={0.1}
+            transmission={0.9}
+            thickness={0.5}
+            opacity={0.3}
             transparent={true}
           />
         </mesh>
       </group>
 
-      {/* Engines */}
+      {/* Enhanced engines with cooling vents */}
       <group position={[0, -0.2, 1.5]}>
-        {/* Left engine */}
-        <mesh position={[-0.8, 0, 0]}>
-          <cylinderGeometry args={[0.3, 0.4, 1, 8]} />
-          <meshStandardMaterial
-            color={accentColor}
-            metalness={0.9}
-            roughness={0.1}
-          />
-        </mesh>
-        {/* Right engine */}
-        <mesh position={[0.8, 0, 0]}>
-          <cylinderGeometry args={[0.3, 0.4, 1, 8]} />
-          <meshStandardMaterial
-            color={accentColor}
-            metalness={0.9}
-            roughness={0.1}
-          />
-        </mesh>
-        {/* Dynamic engine glow */}
-        <pointLight
-          position={[-0.8, 0, 0.5]}
-          color="#ff4400"
-          intensity={engineGlow}
-          distance={3}
-        />
-        <pointLight
-          position={[0.8, 0, 0.5]}
-          color="#ff4400"
-          intensity={engineGlow}
-          distance={3}
-        />
+        {/* Engine bases */}
+        {[-0.8, 0.8].map((x, i) => (
+          <group key={i} position={[x, 0, 0]}>
+            <mesh>
+              <cylinderGeometry args={[0.3, 0.4, 1, 12]} />
+              <meshStandardMaterial
+                color={accentColor}
+                metalness={0.95}
+                roughness={0.1}
+              />
+            </mesh>
+            {/* Cooling vents */}
+            {[0, 1, 2].map((j) => (
+              <mesh
+                key={j}
+                position={[0, 0, -0.2 + j * 0.2]}
+                rotation={[0, 0, (Math.PI / 6) * j]}
+              >
+                <boxGeometry args={[0.5, 0.05, 0.05]} />
+                <meshStandardMaterial
+                  color="#600"
+                  metalness={0.9}
+                  roughness={0.1}
+                />
+              </mesh>
+            ))}
+            {/* Engine glow */}
+            <pointLight
+              position={[0, 0, 0.5]}
+              color="#ff4400"
+              intensity={engineGlow * 1.5}
+              distance={4}
+            />
+            <Trail
+              ref={i === 0 ? exhaustTrailLeftRef : exhaustTrailRightRef}
+              length={8}
+              color={new THREE.Color(1, 0.3, 0)}
+              attenuation={(t) => t * t}
+              width={0.5}
+            >
+              <mesh>
+                <sphereGeometry args={[0.1]} />
+                <meshBasicMaterial color="#ff4400" transparent opacity={0.6} />
+              </mesh>
+            </Trail>
+          </group>
+        ))}
       </group>
 
-      {/* Additional details */}
-      {/* Weapon mounts */}
+      {/* Enhanced weapon mounts with details */}
       <group position={[0, 0, 0]}>
-        {/* Left weapon mount */}
-        <mesh position={[-1.5, -0.1, -0.5]}>
-          <boxGeometry args={[0.2, 0.2, 0.8]} />
-          <meshStandardMaterial
-            color={accentColor}
-            metalness={0.9}
-            roughness={0.1}
-          />
-        </mesh>
-        {/* Right weapon mount */}
-        <mesh position={[1.5, -0.1, -0.5]}>
-          <boxGeometry args={[0.2, 0.2, 0.8]} />
-          <meshStandardMaterial
-            color={accentColor}
-            metalness={0.9}
-            roughness={0.1}
-          />
-        </mesh>
+        {[-1.5, 1.5].map((x, i) => (
+          <group key={i} position={[x, -0.1, -0.5]}>
+            <mesh>
+              <boxGeometry args={[0.2, 0.2, 0.8]} />
+              <meshStandardMaterial
+                color={accentColor}
+                metalness={0.95}
+                roughness={0.1}
+              />
+            </mesh>
+            {/* Weapon detail rings */}
+            <mesh position={[0, 0, -0.3]}>
+              <torusGeometry args={[0.15, 0.03, 8, 8]} />
+              <meshStandardMaterial
+                color={panelColor}
+                metalness={0.9}
+                roughness={0.2}
+              />
+            </mesh>
+          </group>
+        ))}
       </group>
 
-      {/* Ship lights */}
+      {/* Enhanced ship lighting */}
       <pointLight
         position={[0, 0, -2]}
         color={glowColor}
-        intensity={0.5}
-        distance={3}
+        intensity={0.8}
+        distance={4}
       />
       <pointLight
         position={[0, 0.5, -1]}
         color={glowColor}
-        intensity={0.3}
+        intensity={0.5}
+        distance={3}
+      />
+
+      {/* Navigation lights */}
+      <pointLight
+        position={[-2, 0, 0]}
+        color="#ff0000"
+        intensity={0.5}
+        distance={2}
+      />
+      <pointLight
+        position={[2, 0, 0]}
+        color="#00ff00"
+        intensity={0.5}
         distance={2}
       />
     </group>
