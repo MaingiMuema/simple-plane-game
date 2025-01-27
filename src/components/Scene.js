@@ -1,6 +1,6 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState, useEffect } from 'react';
 import { useFrame, useLoader } from '@react-three/fiber';
-import { Stars, Environment, useTexture, Trail } from '@react-three/drei';
+import { Stars, Environment, useTexture, Trail, Detailed } from '@react-three/drei';
 import * as THREE from 'three';
 
 const Scene = () => {
@@ -21,6 +21,12 @@ const Scene = () => {
     '/textures/earth_specular_map.jpg',
   ]);
 
+  // Load asteroid textures with error handling
+  const asteroidTexture = useTexture('/textures/asteroids/asteroid_diffuse.jpg', (texture) => {
+    texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(2, 2);
+  });
+
   // Create stars for the background
   const starProps = useMemo(() => ({
     radius: 1000,
@@ -32,35 +38,88 @@ const Scene = () => {
     speed: 0.5
   }), []);
 
-  // Initialize obstacles with different shapes and properties
+  // Create deformed geometry for asteroids
+  const createAsteroidGeometry = (radius, detail, seed = 0) => {
+    const geometry = new THREE.IcosahedronGeometry(radius, detail);
+    const pos = geometry.attributes.position;
+    const vec = new THREE.Vector3();
+    
+    // Pseudo-random function based on seed
+    const random = (x, y, z) => {
+      const dot = x * 12.9898 + y * 78.233 + z * 37.719 + seed;
+      const sin = Math.sin(dot) * 143758.5453123;
+      return sin - Math.floor(sin);
+    };
+
+    // Apply deformation
+    for (let i = 0; i < pos.count; i++) {
+      vec.fromBufferAttribute(pos, i);
+      const distance = vec.length();
+      
+      // Generate multiple layers of noise using our seeded random function
+      const x = vec.x * 2, y = vec.y * 2, z = vec.z * 2;
+      let noise1 = (random(x, y, z) - 0.5) * 0.15;
+      let noise2 = (random(x * 2, y * 2, z * 2) - 0.5) * 0.1;
+      let noise3 = (random(x * 4, y * 4, z * 4) - 0.5) * 0.05;
+      
+      const totalNoise = noise1 + noise2 + noise3;
+      vec.normalize().multiplyScalar(distance * (1 + totalNoise));
+      
+      pos.setXYZ(i, vec.x, vec.y, vec.z);
+    }
+    
+    geometry.computeVertexNormals();
+    return geometry;
+  };
+
+  // Pre-generate asteroid geometries with more variations
+  const asteroidGeometries = useMemo(() => {
+    const geometries = {
+      large: Array(8).fill(0).map((_, i) => 
+        createAsteroidGeometry(2, 3, i)
+      ),
+      medium: Array(8).fill(0).map((_, i) => 
+        createAsteroidGeometry(1.5, 2, i + 8)
+      ),
+      small: Array(8).fill(0).map((_, i) => 
+        createAsteroidGeometry(1, 2, i + 16)
+      )
+    };
+    return geometries;
+  }, []);
+
+  // Initialize obstacles with different asteroid types
   useMemo(() => {
-    const shapes = [
+    const asteroidTypes = [
       {
-        geometry: 'sphere',
-        args: [1, 32, 32],
-        material: 'asteroid',
+        name: 'large',
+        baseRadius: 2,
+        detail: 3,
+        material: 'rocky',
       },
       {
-        geometry: 'octahedron',
-        args: [1.2],
-        material: 'crystal',
-      },
-      {
-        geometry: 'tetrahedron',
-        args: [1.5],
+        name: 'medium',
+        baseRadius: 1.5,
+        detail: 2,
         material: 'metallic',
       },
       {
-        geometry: 'icosahedron',
-        args: [1.3],
-        material: 'energy',
-      },
+        name: 'small',
+        baseRadius: 1,
+        detail: 2,
+        material: 'icy',
+      }
     ];
 
     const newObstacles = Array.from({ length: 50 }).map(() => {
-      const shape = shapes[Math.floor(Math.random() * shapes.length)];
-      const baseColor = new THREE.Color().setHSL(Math.random(), 0.8, 0.6);
-      const scale = Math.random() * 3 + 1;
+      const type = asteroidTypes[Math.floor(Math.random() * asteroidTypes.length)];
+      const baseColor = new THREE.Color().setHSL(
+        Math.random() * 0.1 + 0.05, // Reddish-brown hue
+        Math.random() * 0.3 + 0.5,  // Medium-high saturation
+        Math.random() * 0.2 + 0.2   // Low-medium lightness
+      );
+      
+      const scale = Math.random() * 0.5 + 0.5; // More controlled scale variation
       
       return {
         position: [
@@ -73,14 +132,14 @@ const Scene = () => {
           Math.random() * Math.PI,
           Math.random() * Math.PI
         ],
-        shape: shape.geometry,
-        args: shape.args,
-        material: shape.material,
+        type: type.name,
+        baseRadius: type.baseRadius,
+        detail: type.detail,
+        material: type.material,
         color: baseColor,
-        emissiveColor: baseColor.clone().multiplyScalar(0.5),
-        scale,
-        rotationSpeed: (Math.random() - 0.5) * 0.02,
-        pulseSpeed: Math.random() * 2 + 1,
+        scale: scale,
+        rotationSpeed: (Math.random() - 0.5) * 0.01, // Slower rotation
+        uniqueDeformation: Math.random(), // Used for unique geometry generation
       };
     });
     setObstacles(newObstacles);
@@ -181,89 +240,82 @@ const Scene = () => {
 
       {/* Obstacles */}
       {obstacles.map((obs, i) => {
-        const MaterialComponent = () => {
+        const AsteroidMaterial = () => {
           switch(obs.material) {
-            case 'asteroid':
+            case 'rocky':
               return (
                 <meshStandardMaterial
+                  map={asteroidTexture}
                   color={obs.color}
-                  roughness={0.8}
-                  metalness={0.2}
+                  roughness={0.9}
+                  metalness={0.1}
                   bumpScale={0.5}
-                />
-              );
-            case 'crystal':
-              return (
-                <meshPhysicalMaterial
-                  color={obs.color}
-                  transmission={0.6}
-                  opacity={0.8}
-                  metalness={1}
-                  roughness={0.1}
-                  ior={1.5}
-                  thickness={0.5}
-                  transparent
                 />
               );
             case 'metallic':
               return (
                 <meshStandardMaterial
+                  map={asteroidTexture}
                   color={obs.color}
-                  metalness={0.9}
-                  roughness={0.1}
-                  emissive={obs.emissiveColor}
-                  emissiveIntensity={0.3}
+                  metalness={0.8}
+                  roughness={0.3}
+                  envMapIntensity={1}
                 />
               );
-            case 'energy':
+            case 'icy':
               return (
-                <meshPhongMaterial
+                <meshPhysicalMaterial
+                  map={asteroidTexture}
                   color={obs.color}
-                  emissive={obs.emissiveColor}
-                  emissiveIntensity={0.8}
-                  transparent
-                  opacity={0.9}
-                  shininess={100}
+                  transmission={0.3}
+                  thickness={1}
+                  roughness={0.2}
+                  ior={1.5}
+                  envMapIntensity={1.5}
                 />
               );
           }
         };
 
-        const GeometryComponent = () => {
-          switch(obs.shape) {
-            case 'sphere':
-              return <sphereGeometry args={obs.args} />;
-            case 'octahedron':
-              return <octahedronGeometry args={obs.args} />;
-            case 'tetrahedron':
-              return <tetrahedronGeometry args={obs.args} />;
-            case 'icosahedron':
-              return <icosahedronGeometry args={obs.args} />;
-          }
-        };
+        // Get pre-generated geometry based on asteroid type
+        const geometryIndex = Math.floor(obs.uniqueDeformation * 8);
+        const geometry = asteroidGeometries[obs.type][geometryIndex];
 
         return (
           <group key={i}>
-            <Trail
-              width={2}
-              length={4}
-              color={obs.color}
-              attenuation={(t) => t * t}
-            >
+            <Detailed distances={[0, 20, 40]}>
+              <mesh
+                position={obs.position}
+                rotation={obs.rotation}
+                scale={obs.scale}
+                geometry={geometry}
+              >
+                <AsteroidMaterial />
+              </mesh>
+              {/* Lower detail version for distance */}
               <mesh
                 position={obs.position}
                 rotation={obs.rotation}
                 scale={obs.scale}
               >
-                <GeometryComponent />
-                <MaterialComponent />
+                <icosahedronGeometry args={[obs.baseRadius, 1]} />
+                <AsteroidMaterial />
               </mesh>
-            </Trail>
+              {/* Lowest detail for far distance */}
+              <mesh
+                position={obs.position}
+                rotation={obs.rotation}
+                scale={obs.scale}
+              >
+                <icosahedronGeometry args={[obs.baseRadius, 0]} />
+                <AsteroidMaterial />
+              </mesh>
+            </Detailed>
             <pointLight
               position={obs.position}
               color={obs.color}
-              intensity={0.6}
-              distance={15}
+              intensity={0.4}
+              distance={10}
             />
           </group>
         );
