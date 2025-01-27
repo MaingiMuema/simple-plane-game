@@ -1,6 +1,6 @@
 import React from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Stars, OrbitControls, KeyboardControls } from '@react-three/drei';
+import { Stars, KeyboardControls } from '@react-three/drei';
 import Spaceship from './Spaceship';
 import Scene from './Scene';
 
@@ -18,12 +18,16 @@ const Game = () => {
     >
       <div style={{ width: '100vw', height: '100vh' }}>
         <Canvas
-          camera={{ position: [0, 5, 15], fov: 75 }}
+          camera={{ 
+            position: [0, 10, 20],
+            fov: 60,
+            near: 0.1,
+            far: 1000
+          }}
           style={{ background: '#000000' }}
         >
           <ambientLight intensity={0.5} />
           <pointLight position={[10, 10, 10]} intensity={1} />
-          <OrbitControls enableZoom={false} />
           <Stars />
           <Scene />
           <Spaceship />

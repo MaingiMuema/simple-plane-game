@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { useFrame } from '@react-three/fiber';
+import { useFrame, useThree } from '@react-three/fiber';
 import { useKeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
 
@@ -11,13 +11,16 @@ const Spaceship = () => {
   // Get keyboard controls
   const [subscribeKeys, getKeys] = useKeyboardControls();
 
+  // Get camera
+  const { camera } = useThree();
+
   // Movement parameters
   const maxSpeed = 0.5;
   const acceleration = 0.02;
   const deceleration = 0.01;
   const rotationSpeed = 0.03;
-  const ascendSpeed = 0.15;
-  const tiltAngle = Math.PI * 0.15; // Maximum tilt angle when turning
+  const ascendSpeed = 0.3;
+  const tiltAngle = Math.PI * 0.15;
 
   useFrame((state, delta) => {
     if (!shipRef.current) return;
@@ -38,17 +41,16 @@ const Spaceship = () => {
     // Forward/Backward movement with momentum
     if (forward) {
       velocity.z = Math.max(velocity.z - acceleration, -maxSpeed);
-      setEngineGlow(1.5); // Increase engine glow when accelerating
+      setEngineGlow(1.5);
     } else if (backward) {
-      velocity.z = Math.min(velocity.z + acceleration, maxSpeed * 0.5); // Slower reverse speed
+      velocity.z = Math.min(velocity.z + acceleration, maxSpeed * 0.5);
       setEngineGlow(1.0);
     } else {
-      // Gradual deceleration
       velocity.z *= (1 - deceleration);
       setEngineGlow(0.5);
     }
 
-    // Apply velocity to position
+    // Apply forward/backward velocity
     ship.position.z += velocity.z;
 
     // Left/Right movement with banking effect
@@ -69,13 +71,17 @@ const Spaceship = () => {
     ship.rotation.y = THREE.MathUtils.lerp(ship.rotation.y, targetRotationY, 0.1);
     ship.rotation.z = THREE.MathUtils.lerp(ship.rotation.z, targetRotationZ, 0.1);
 
-    // Vertical movement (W/S keys)
+    // Vertical movement with momentum
     if (ascend) {
-      ship.position.y += ascendSpeed * delta;
+      velocity.y = Math.min(velocity.y + acceleration, ascendSpeed);
+    } else if (descend) {
+      velocity.y = Math.max(velocity.y - acceleration, -ascendSpeed);
+    } else {
+      velocity.y *= (1 - deceleration);
     }
-    if (descend) {
-      ship.position.y -= ascendSpeed * delta;
-    }
+
+    // Apply vertical velocity
+    ship.position.y += velocity.y;
 
     // Add gentle hover effect
     const hoverOffset = Math.sin(state.clock.elapsedTime * 2) * 0.02;
@@ -89,10 +95,17 @@ const Spaceship = () => {
     };
 
     ship.position.x = THREE.MathUtils.clamp(ship.position.x, -bounds.x, bounds.x);
-    ship.position.y = THREE.MathUtils.clamp(ship.position.y, 0, bounds.y);
+    ship.position.y = THREE.MathUtils.clamp(ship.position.y, 1, bounds.y);
     ship.position.z = THREE.MathUtils.clamp(ship.position.z, -bounds.z, bounds.z);
 
-    // Update engine visual effects based on movement
+    // Camera following
+    const cameraOffset = new THREE.Vector3(0, 5, 12);
+    const targetCameraPos = ship.position.clone().add(cameraOffset);
+    
+    camera.position.lerp(targetCameraPos, 0.1);
+    camera.lookAt(ship.position);
+
+    // Update engine visual effects
     const engineIntensity = Math.abs(velocity.z) / maxSpeed;
     setEngineGlow(0.5 + engineIntensity);
   });
