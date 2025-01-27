@@ -1,9 +1,24 @@
-import React, { useMemo } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { Stars, Environment } from '@react-three/drei';
+import React, { useMemo, useRef } from 'react';
+import { useFrame, useLoader } from '@react-three/fiber';
+import { Stars, Environment, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 
 const Scene = () => {
+  const earthRef = useRef();
+  const cloudsRef = useRef();
+
+  // Load Earth textures
+  const [
+    colorMap,
+    normalMap,
+    specularMap,
+    cloudsMap
+  ] = useTexture([
+    '/textures/earth_daymap.jpg',
+    '/textures/earth_normal_map.jpg',
+    '/textures/earth_specular_map.jpg',
+  ]);
+
   // Create stars for the background
   const starProps = useMemo(() => ({
     radius: 100,
@@ -32,6 +47,20 @@ const Scene = () => {
     })), []
   );
 
+  useFrame(({ clock }) => {
+    const elapsedTime = clock.getElapsedTime();
+    
+    // Rotate Earth
+    if (earthRef.current) {
+      earthRef.current.rotation.y = elapsedTime * 0.05;
+    }
+
+    // Rotate clouds slightly faster
+    if (cloudsRef.current) {
+      cloudsRef.current.rotation.y = elapsedTime * 0.06;
+    }
+  });
+
   return (
     <>
       {/* Environment and Lighting */}
@@ -46,18 +75,43 @@ const Scene = () => {
       {/* Space fog */}
       <fog attach="fog" args={['#000', 30, 100]} />
       
-      {/* Ground plane with gradient */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -5, 0]}>
-        <planeGeometry args={[200, 200]} />
-        <meshStandardMaterial
-          color="#111"
-          metalness={0.8}
-          roughness={0.5}
-          emissive="#001"
-          emissiveIntensity={0.2}
-        />
-      </mesh>
-      
+      {/* Earth */}
+      <group>
+        {/* Main Earth sphere */}
+        <mesh ref={earthRef}>
+          <sphereGeometry args={[10, 64, 64]} />
+          <meshPhongMaterial
+            map={colorMap}
+            normalMap={normalMap}
+            specularMap={specularMap}
+            shininess={5}
+            specular={new THREE.Color(0x333333)}
+          />
+        </mesh>
+
+        {/* Cloud layer */}
+        <mesh ref={cloudsRef} scale={1.01}>
+          <sphereGeometry args={[10, 64, 64]} />
+          <meshPhongMaterial
+            map={cloudsMap}
+            transparent={true}
+            opacity={0.4}
+            depthWrite={false}
+          />
+        </mesh>
+
+        {/* Atmosphere glow */}
+        <mesh scale={1.1}>
+          <sphereGeometry args={[10, 64, 64]} />
+          <meshPhongMaterial
+            color="#004fff"
+            transparent={true}
+            opacity={0.1}
+            side={THREE.BackSide}
+          />
+        </mesh>
+      </group>
+
       {/* Obstacles */}
       {obstacles.map((obs, i) => (
         <mesh
