@@ -1,8 +1,8 @@
 /* eslint-disable react/no-unknown-property */
 /* eslint-disable no-unused-vars */
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, Suspense } from "react";
 import PropTypes from "prop-types";
-import { useFrame, useThree } from "@react-three/fiber";
+import { useFrame, useThree, useLoader } from "@react-three/fiber";
 import {
   useKeyboardControls,
   Trail,
@@ -30,6 +30,66 @@ const Spaceship = ({ obstacles = [] }) => {
   const [gravityEffect, setGravityEffect] = useState(new THREE.Vector3());
   const shipRadius = 2; // Approximate ship collision radius
 
+  // Load the GLB model
+  const { scene } = useGLTF('/models/spaceship.glb');
+
+  // Load textures
+  const [
+    colorMap,
+    normalMap,
+    roughnessMap,
+    metalnessMap,
+    emissiveMap,
+    aoMap
+  ] = useLoader(THREE.TextureLoader, [
+    '/models/24-textures/Intergalactic Spaceship_color_4.jpg',
+    '/models/24-textures/Intergalactic Spaceship_nmap_2_Tris.jpg',
+    '/models/24-textures/Intergalactic Spaceship_rough.jpg',
+    '/models/24-textures/Intergalactic Spaceship_metalness.jpg',
+    '/models/24-textures/Intergalactic Spaceship_emi.jpg',
+    '/models/24-textures/Intergalactic Spaceship Ao_Blender.jpg'
+  ]);
+
+  // Initialize model and materials
+  useEffect(() => {
+    if (scene && shipRef.current) {
+      // Clone the scene
+      const clonedScene = scene.clone(true);
+      
+      // Apply materials to the model
+      clonedScene.traverse((child) => {
+        if (child.isMesh) {
+          child.material = new THREE.MeshStandardMaterial({
+            map: colorMap,
+            normalMap: normalMap,
+            roughnessMap: roughnessMap,
+            metalnessMap: metalnessMap,
+            emissiveMap: emissiveMap,
+            aoMap: aoMap,
+            emissive: new THREE.Color(0x00f7ff),
+            emissiveIntensity: 1,
+            metalness: 0.8,
+            roughness: 0.2
+          });
+          child.material.needsUpdate = true;
+          
+          // Enable shadows
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      // Set scale
+      clonedScene.scale.set(0.5, 0.5, 0.5);
+      
+      // Rotate model to face forward (180 degrees around Y-axis)
+      clonedScene.rotation.set(0, Math.PI, 0);
+      
+      // Add the model to the ship group
+      shipRef.current.add(clonedScene);
+    }
+  }, [scene, colorMap, normalMap, roughnessMap, metalnessMap, emissiveMap, aoMap]);
+
   // Get keyboard controls
   const [, getKeys] = useKeyboardControls();
 
@@ -40,10 +100,10 @@ const Spaceship = ({ obstacles = [] }) => {
   const normalMaxSpeed = 1.0;
   const acceleration = 0.03;
   const deceleration = 0.01;
-  const turnSpeed = 0.03; // Speed of turning
+  const turnSpeed = 0.03;
   const ascendSpeed = 0.5;
   const tiltAngle = Math.PI * 0.15;
-  const direction = useRef(new THREE.Vector3(0, 0, 1)); // Ship's forward direction
+  const direction = useRef(new THREE.Vector3(0, 0, 1));
 
   useFrame(() => {
     if (!shipRef.current) return;
@@ -70,7 +130,7 @@ const Spaceship = ({ obstacles = [] }) => {
       velocity.z = Math.max(velocity.z - acceleration, -currentMaxSpeed);
       setEngineGlow(shieldActive ? 2.5 : 1.5);
     } else if (backward) {
-      velocity.z = Math.min(velocity.z + acceleration, currentMaxSpeed * 0.5); // Changed to positive
+      velocity.z = Math.min(velocity.z + acceleration, currentMaxSpeed * 0.5); 
       setEngineGlow(shieldActive ? 2.0 : 1.0);
     } else {
       velocity.z *= 1 - deceleration;
@@ -181,7 +241,7 @@ const Spaceship = ({ obstacles = [] }) => {
         const response = calculateCollisionResponse(
           [ship.position.x, ship.position.y, ship.position.z],
           obstacle.position,
-          isEarthObstacle ? 3 : 2 // Stronger response for Earth
+          isEarthObstacle ? 3 : 2 
         );
 
         if (isEarthObstacle) {
@@ -190,7 +250,7 @@ const Spaceship = ({ obstacles = [] }) => {
           // Add atmospheric entry effects
           if (!earthColliding) {
             // Initial impact
-            velocity.multiplyScalar(0.3); // Stronger velocity reduction
+            velocity.multiplyScalar(0.3); 
             setEarthColliding(true);
           }
 
@@ -269,7 +329,7 @@ const Spaceship = ({ obstacles = [] }) => {
   const panelColor = "#4d00ff";
 
   return (
-    <group ref={shipRef} position={[0, 5, 0]} rotation={[0, Math.PI, 0]}>
+    <group ref={shipRef} position={[0, 5, 0]} rotation={[0, 0, 0]}>
       {/* Energy Shield Effect */}
       {shieldActive && (
         <mesh>
@@ -294,62 +354,19 @@ const Spaceship = ({ obstacles = [] }) => {
         <pointLight color={shieldColor} intensity={2} distance={5} decay={2} />
       )}
 
-      {/* Enhanced Main Hull */}
-      <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[0.8, 1.2, 4, 16]} />
-        <meshStandardMaterial
-          color={mainColor}
-          metalness={1}
-          roughness={0.2}
-          envMapIntensity={3}
-        />
-      </mesh>
-
-      {/* Advanced Geometric Panels */}
-      {[0, 1, 2, 3].map((i) => (
-        <mesh
-          key={`panel-${i}`}
-          position={[0, 0, -0.5]}
-          rotation={[0, (i * Math.PI) / 2, 0]}
-        >
-          <boxGeometry args={[0.3, 1.5, 0.05]} />
-          <meshStandardMaterial
-            color={accentColor}
-            emissive={accentColor}
-            emissiveIntensity={0.5}
-            metalness={0.9}
-            roughness={0.1}
-          />
-        </mesh>
-      ))}
-
-      {/* Holographic HUD Elements */}
-      <group position={[0, 0.8, -1.5]}>
-        <sprite scale={[1, 1, 1]}>
-          <spriteMaterial
-            color={holoColor}
-            transparent
-            opacity={holoOpacity}
-            blending={THREE.AdditiveBlending}
-          />
-        </sprite>
-      </group>
-
       {/* Enhanced Engine System */}
       <group position={[0, -0.2, 1.5]}>
         {[-0.8, 0.8].map((x, i) => (
           <group key={i} position={[x, 0, 0]}>
-            {/* Plasma Containment Ring */}
-            <mesh>
-              <torusGeometry args={[0.4, 0.05, 16, 32]} />
-              <meshStandardMaterial
-                color={energyColor}
-                emissive={energyColor}
-                emissiveIntensity={2}
-              />
-            </mesh>
+            {/* Enhanced engine glow */}
+            <pointLight
+              position={[0, 0, 0.5]}
+              color={engineGlowColor}
+              intensity={engineGlow * 2}
+              distance={5}
+            />
 
-            {/* Enhanced Engine Trail */}
+            {/* Engine Trail */}
             <Trail
               ref={i === 0 ? exhaustTrailLeftRef : exhaustTrailRightRef}
               length={20}
@@ -371,236 +388,6 @@ const Spaceship = ({ obstacles = [] }) => {
         ))}
       </group>
 
-      {/* Energy Field Effects */}
-      <group position={[0, 0, 0]}>
-        <pointLight color={energyColor} intensity={2} distance={4} decay={2} />
-        <mesh>
-          <sphereGeometry args={[2, 16, 16]} />
-          <meshBasicMaterial
-            color={energyColor}
-            transparent
-            opacity={0.1}
-            blending={THREE.AdditiveBlending}
-          />
-        </mesh>
-      </group>
-
-      {/* Enhanced Weapon Systems */}
-      {[-1.5, 1.5].map((x, i) => (
-        <group key={i} position={[x, -0.1, -0.5]}>
-          <mesh>
-            <cylinderGeometry args={[0.15, 0.15, 1, 8]} />
-            <meshStandardMaterial
-              color={accentColor}
-              emissive={accentColor}
-              emissiveIntensity={1}
-            />
-          </mesh>
-          <pointLight
-            position={[0, 0, -0.5]}
-            color={energyColor}
-            intensity={0.5}
-            distance={2}
-          />
-        </group>
-      ))}
-
-      {/* Enhanced neon trim rings with stronger glow */}
-      <mesh position={[0, 0, -1]}>
-        <torusGeometry args={[0.9, 0.02, 16, 32]} />
-        <meshStandardMaterial
-          color={trimColor}
-          emissive={trimColor}
-          emissiveIntensity={2}
-          metalness={0.9}
-          roughness={0.2}
-          userData={{ isNeon: true }}
-        />
-      </mesh>
-
-      {/* Improved nose cone with panels */}
-      <mesh position={[0, 0, -2]}>
-        <coneGeometry args={[0.8, 2, 12]} />
-        <meshStandardMaterial
-          color={mainColor}
-          metalness={0.9}
-          roughness={0.3}
-          envMapIntensity={1.5}
-        />
-      </mesh>
-
-      {/* Panel details on nose */}
-      {[0, 1, 2, 3].map((i) => (
-        <mesh
-          key={i}
-          position={[0, 0, -1.5]}
-          rotation={[0, (i * Math.PI) / 2, 0]}
-        >
-          <planeGeometry args={[0.4, 1]} />
-          <meshStandardMaterial
-            color={panelColor}
-            metalness={0.8}
-            roughness={0.4}
-          />
-        </mesh>
-      ))}
-
-      {/* Enhanced wings with beveled edges */}
-      <group position={[0, 0, 0]}>
-        {/* Left wing */}
-        <mesh position={[-2, 0, 0]} rotation={[0, 0, Math.PI * 0.1]}>
-          <boxGeometry args={[3, 0.15, 2]} />
-          <meshStandardMaterial
-            color={mainColor}
-            metalness={0.9}
-            roughness={0.3}
-            envMapIntensity={1.5}
-          />
-        </mesh>
-        {/* Wing panel details */}
-        <mesh position={[-2, 0.08, 0]} rotation={[0, 0, Math.PI * 0.1]}>
-          <planeGeometry args={[2.5, 1.5]} />
-          <meshStandardMaterial
-            color={panelColor}
-            metalness={0.8}
-            roughness={0.4}
-          />
-        </mesh>
-        {/* Mirror for right wing */}
-        <mesh position={[2, 0, 0]} rotation={[0, 0, -Math.PI * 0.1]}>
-          <boxGeometry args={[3, 0.15, 2]} />
-          <meshStandardMaterial
-            color={mainColor}
-            metalness={0.9}
-            roughness={0.3}
-            envMapIntensity={1.5}
-          />
-        </mesh>
-        <mesh position={[2, 0.08, 0]} rotation={[0, 0, -Math.PI * 0.1]}>
-          <planeGeometry args={[2.5, 1.5]} />
-          <meshStandardMaterial
-            color={panelColor}
-            metalness={0.8}
-            roughness={0.4}
-          />
-        </mesh>
-      </group>
-
-      {/* Enhanced cockpit glow */}
-      <group position={[0, 0.5, -1]}>
-        <pointLight color={glowColor} intensity={0.8} distance={3} />
-        <mesh>
-          <sphereGeometry
-            args={[0.4, 24, 24, 0, Math.PI * 2, 0, Math.PI * 0.5]}
-          />
-          <meshPhysicalMaterial
-            color={glowColor}
-            emissive={glowColor}
-            emissiveIntensity={0.5}
-            transmission={0.9}
-            thickness={0.5}
-            opacity={0.7}
-            transparent={true}
-            roughness={0.1}
-          />
-        </mesh>
-      </group>
-
-      {/* Enhanced engines with cooling vents */}
-      <group position={[0, -0.2, 1.5]}>
-        {/* Engine bases */}
-        {[-0.8, 0.8].map((x, i) => (
-          <group key={i} position={[x, 0, 0]}>
-            <mesh>
-              <cylinderGeometry args={[0.3, 0.4, 1, 12]} />
-              <meshStandardMaterial
-                color={mainColor}
-                emissive={engineGlowColor}
-                emissiveIntensity={0.5}
-                metalness={0.9}
-                roughness={0.1}
-              />
-            </mesh>
-            {/* Cooling vents */}
-            {[0, 1, 2].map((j) => (
-              <mesh
-                key={j}
-                position={[0, 0, -0.2 + j * 0.2]}
-                rotation={[0, 0, (Math.PI / 6) * j]}
-              >
-                <boxGeometry args={[0.5, 0.05, 0.05]} />
-                <meshStandardMaterial
-                  color="#600"
-                  metalness={0.9}
-                  roughness={0.1}
-                />
-              </mesh>
-            ))}
-            {/* Enhanced engine glow */}
-            <pointLight
-              position={[0, 0, 0.5]}
-              color={engineGlowColor}
-              intensity={engineGlow * 2}
-              distance={5}
-            />
-
-            {/* Volumetric engine glow */}
-            <sprite position={[0, 0, 0.7]} scale={[1, 1, 1]}>
-              <spriteMaterial
-                map={null}
-                color={engineGlowColor}
-                transparent
-                opacity={0.3}
-                blending={THREE.AdditiveBlending}
-              />
-            </sprite>
-
-            <Trail
-              ref={i === 0 ? exhaustTrailLeftRef : exhaustTrailRightRef}
-              length={10}
-              color={new THREE.Color(engineGlowColor)}
-              attenuation={(t) => t * t}
-              width={0.8}
-            >
-              <mesh>
-                <sphereGeometry args={[0.1]} />
-                <meshBasicMaterial
-                  color={engineGlowColor}
-                  transparent
-                  opacity={0.6}
-                  blending={THREE.AdditiveBlending}
-                />
-              </mesh>
-            </Trail>
-          </group>
-        ))}
-      </group>
-
-      {/* Enhanced weapon mounts with details */}
-      <group position={[0, 0, 0]}>
-        {[-1.5, 1.5].map((x, i) => (
-          <group key={i} position={[x, -0.1, -0.5]}>
-            <mesh>
-              <boxGeometry args={[0.2, 0.2, 0.8]} />
-              <meshStandardMaterial
-                color={accentColor}
-                metalness={0.95}
-                roughness={0.1}
-              />
-            </mesh>
-            {/* Weapon detail rings */}
-            <mesh position={[0, 0, -0.3]}>
-              <torusGeometry args={[0.15, 0.03, 8, 8]} />
-              <meshStandardMaterial
-                color={panelColor}
-                metalness={0.9}
-                roughness={0.2}
-              />
-            </mesh>
-          </group>
-        ))}
-      </group>
-
       {/* Enhanced ship ambient lighting */}
       <pointLight
         position={[0, 0, -2]}
@@ -615,7 +402,7 @@ const Spaceship = ({ obstacles = [] }) => {
         distance={4}
       />
 
-      {/* Enhanced navigation lights */}
+      {/* Navigation lights */}
       <pointLight
         position={[-2, 0, 0]}
         color="#ff0000"
@@ -628,31 +415,6 @@ const Spaceship = ({ obstacles = [] }) => {
         intensity={1}
         distance={3}
       />
-
-      {/* Additional rim lighting for contrast */}
-      <pointLight
-        position={[0, 2, 0]}
-        color="#ffffff"
-        intensity={0.5}
-        distance={4}
-      />
-      <pointLight
-        position={[0, -2, 0]}
-        color="#ffffff"
-        intensity={0.5}
-        distance={4}
-      />
-
-      {/* Wing trim lights */}
-      {[-2, 2].map((x, i) => (
-        <pointLight
-          key={i}
-          position={[x, 0, 0]}
-          color={trimColor}
-          intensity={0.3}
-          distance={2}
-        />
-      ))}
 
       {/* Add collision effect flash */}
       {isColliding && (

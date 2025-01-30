@@ -158,17 +158,6 @@ const Scene = ({ onObstaclesUpdate }) => {
     setObstacles(newObstacles);
   }, []);
 
-  // Add Earth parameters
-  const earthParams = useMemo(
-    () => ({
-      position: [30, 20, -40],
-      scale: 0.3,
-      radius: 10, // Base radius before scale
-      collisionRadius: 3, // Effective collision radius after scale
-    }),
-    []
-  );
-
   useFrame(({ clock, camera }) => {
     const elapsedTime = clock.getElapsedTime();
 
@@ -210,17 +199,7 @@ const Scene = ({ onObstaclesUpdate }) => {
           ],
         };
       });
-
-      // Add Earth as a special obstacle
-      const earthObstacle = {
-        position: earthParams.position,
-        baseRadius: earthParams.collisionRadius,
-        scale: 1,
-        type: "earth",
-        isEarth: true,
-      };
-
-      onObstaclesUpdate([...updatedObstacles, earthObstacle]);
+      onObstaclesUpdate(updatedObstacles);
       return updatedObstacles;
     });
   });
@@ -240,7 +219,7 @@ const Scene = ({ onObstaclesUpdate }) => {
       <fog attach="fog" args={["#000", 100, 400]} />
 
       {/* Earth as an obstacle */}
-      <group position={earthParams.position} scale={earthParams.scale}>
+      <group position={[30, 20, -40]} scale={0.3}>
         {/* Main Earth sphere */}
         <mesh ref={earthRef}>
           <sphereGeometry args={[10, 64, 64]} />
