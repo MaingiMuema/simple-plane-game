@@ -8,6 +8,7 @@ import {
   Trail,
   useGLTF,
   MeshTransmissionMaterial,
+  Billboard,
 } from "@react-three/drei";
 import * as THREE from "three";
 import {
@@ -15,8 +16,71 @@ import {
   calculateCollisionResponse,
 } from "../utils/collisionUtils";
 
-const Spaceship = ({ obstacles = [] }) => {
+const Projectile = ({ position, direction }) => {
+  Projectile.propTypes = {
+    position: PropTypes.instanceOf(THREE.Vector3).isRequired,
+    direction: PropTypes.instanceOf(THREE.Vector3).isRequired,
+  };
+  const ref = useRef();
+  const speed = 2.0;
+
+  useFrame(() => {
+    if (ref.current) {
+      ref.current.position.add(direction.clone().multiplyScalar(speed));
+    }
+  });
+
+  return (
+    <mesh ref={ref} position={position}>
+      <sphereGeometry args={[0.1]} />
+      <meshStandardMaterial
+        color="#ff0000"
+        emissive="#ff0000"
+        emissiveIntensity={2}
+      />
+    </mesh>
+  );
+};
+
+const Explosion = ({ position, scale }) => {
+  Explosion.propTypes = {
+    position: PropTypes.instanceOf(THREE.Vector3).isRequired,
+    scale: PropTypes.number.isRequired,
+  };
+  const ref = useRef();
+  const [opacity, setOpacity] = useState(1);
+
+  useFrame(() => {
+    if (ref.current) {
+      setOpacity((prev) => Math.max(0, prev - 0.02));
+      ref.current.scale.multiplyScalar(1.05);
+    }
+  });
+
+  return (
+    <Billboard>
+      <mesh ref={ref} position={position} scale={[scale, scale, scale]}>
+        <sphereGeometry args={[1, 32, 32]} />
+        <meshStandardMaterial
+          color="#ff6600"
+          transparent
+          opacity={opacity}
+          emissive="#ff6600"
+          emissiveIntensity={2}
+        />
+      </mesh>
+    </Billboard>
+  );
+};
+
+const Spaceship = ({
+  obstacles = [],
+  onAsteroidDestroyed,
+  onObstaclesUpdate,
+}) => {
   const shipRef = useRef();
+  const [projectiles, setProjectiles] = useState([]);
+  const [explosions, setExplosions] = useState([]);
   const velocityRef = useRef(new THREE.Vector3(0, 0, 0));
   const [engineGlow, setEngineGlow] = useState(0.5);
   const exhaustTrailLeftRef = useRef();
@@ -31,31 +95,25 @@ const Spaceship = ({ obstacles = [] }) => {
   const shipRadius = 2; // Approximate ship collision radius
 
   // Load the GLB model
-  const { scene } = useGLTF('/models/spaceship.glb');
+  const { scene } = useGLTF("/models/spaceship.glb");
 
   // Load textures
-  const [
-    colorMap,
-    normalMap,
-    roughnessMap,
-    metalnessMap,
-    emissiveMap,
-    aoMap
-  ] = useLoader(THREE.TextureLoader, [
-    '/models/24-textures/Intergalactic Spaceship_color_4.jpg',
-    '/models/24-textures/Intergalactic Spaceship_nmap_2_Tris.jpg',
-    '/models/24-textures/Intergalactic Spaceship_rough.jpg',
-    '/models/24-textures/Intergalactic Spaceship_metalness.jpg',
-    '/models/24-textures/Intergalactic Spaceship_emi.jpg',
-    '/models/24-textures/Intergalactic Spaceship Ao_Blender.jpg'
-  ]);
+  const [colorMap, normalMap, roughnessMap, metalnessMap, emissiveMap, aoMap] =
+    useLoader(THREE.TextureLoader, [
+      "/models/24-textures/Intergalactic Spaceship_color_4.jpg",
+      "/models/24-textures/Intergalactic Spaceship_nmap_2_Tris.jpg",
+      "/models/24-textures/Intergalactic Spaceship_rough.jpg",
+      "/models/24-textures/Intergalactic Spaceship_metalness.jpg",
+      "/models/24-textures/Intergalactic Spaceship_emi.jpg",
+      "/models/24-textures/Intergalactic Spaceship Ao_Blender.jpg",
+    ]);
 
   // Initialize model and materials
   useEffect(() => {
     if (scene && shipRef.current) {
       // Clone the scene
       const clonedScene = scene.clone(true);
-      
+
       // Apply materials to the model
       clonedScene.traverse((child) => {
         if (child.isMesh) {
@@ -69,10 +127,10 @@ const Spaceship = ({ obstacles = [] }) => {
             emissive: new THREE.Color(0x00f7ff),
             emissiveIntensity: 1,
             metalness: 0.8,
-            roughness: 0.2
+            roughness: 0.2,
           });
           child.material.needsUpdate = true;
-          
+
           // Enable shadows
           child.castShadow = true;
           child.receiveShadow = true;
@@ -81,14 +139,22 @@ const Spaceship = ({ obstacles = [] }) => {
 
       // Set scale
       clonedScene.scale.set(0.5, 0.5, 0.5);
-      
+
       // Rotate model to face forward (180 degrees around Y-axis)
       clonedScene.rotation.set(0, Math.PI, 0);
-      
+
       // Add the model to the ship group
       shipRef.current.add(clonedScene);
     }
-  }, [scene, colorMap, normalMap, roughnessMap, metalnessMap, emissiveMap, aoMap]);
+  }, [
+    scene,
+    colorMap,
+    normalMap,
+    roughnessMap,
+    metalnessMap,
+    emissiveMap,
+    aoMap,
+  ]);
 
   // Get keyboard controls
   const [, getKeys] = useKeyboardControls();
@@ -112,8 +178,24 @@ const Spaceship = ({ obstacles = [] }) => {
     const ship = shipRef.current;
 
     // Get the current state of all controls
-    const { forward, backward, left, right, ascend, descend, shield } =
+    const { forward, backward, left, right, ascend, descend, shield, shoot } =
       getKeys();
+
+    // Handle shooting
+    if (shoot && clock.elapsedTime - lastShieldToggle > 0.2) {
+      const direction = new THREE.Vector3(0, 0, -1)
+        .applyQuaternion(ship.quaternion)
+        .normalize();
+      setProjectiles((prev) => [
+        ...prev,
+        {
+          id: Date.now(),
+          position: ship.position.clone(),
+          direction: direction,
+        },
+      ]);
+      setLastShieldToggle(clock.elapsedTime);
+    }
 
     // Handle shield toggle with debounce
     if (shield && clock.elapsedTime - lastShieldToggle > 0.3) {
@@ -130,7 +212,7 @@ const Spaceship = ({ obstacles = [] }) => {
       velocity.z = Math.max(velocity.z - acceleration, -currentMaxSpeed);
       setEngineGlow(shieldActive ? 2.5 : 1.5);
     } else if (backward) {
-      velocity.z = Math.min(velocity.z + acceleration, currentMaxSpeed * 0.5); 
+      velocity.z = Math.min(velocity.z + acceleration, currentMaxSpeed * 0.5);
       setEngineGlow(shieldActive ? 2.0 : 1.0);
     } else {
       velocity.z *= 1 - deceleration;
@@ -223,6 +305,42 @@ const Spaceship = ({ obstacles = [] }) => {
       });
     }
 
+    // Handle projectile collisions
+    setProjectiles((prev) =>
+      prev.filter((projectile) => {
+        const projectilePos = projectile.position;
+        let shouldRemove = false;
+
+        obstacles.forEach((obstacle) => {
+          const distance = new THREE.Vector3(...obstacle.position).distanceTo(
+            projectilePos
+          );
+          if (distance < obstacle.baseRadius * obstacle.scale) {
+            // Create explosion
+            setExplosions((prev) => [
+              ...prev,
+              {
+                id: Date.now(),
+                position: projectilePos,
+                scale: 0.5,
+              },
+            ]);
+            shouldRemove = true;
+
+            // Remove asteroid after multiple hits
+            const updatedObstacles = obstacles.filter((o) => o !== obstacle);
+            onObstaclesUpdate?.(updatedObstacles);
+            onAsteroidDestroyed?.();
+          }
+        });
+
+        return !shouldRemove;
+      })
+    );
+
+    // Remove old explosions
+    setExplosions((prev) => prev.filter((e) => e.scale < 5));
+
     // Enhanced collision detection
     let collisionResponse = new THREE.Vector3();
     let isCollidingWithEarth = false;
@@ -241,7 +359,7 @@ const Spaceship = ({ obstacles = [] }) => {
         const response = calculateCollisionResponse(
           [ship.position.x, ship.position.y, ship.position.z],
           obstacle.position,
-          isEarthObstacle ? 3 : 2 
+          isEarthObstacle ? 3 : 2
         );
 
         if (isEarthObstacle) {
@@ -250,9 +368,14 @@ const Spaceship = ({ obstacles = [] }) => {
           // Add atmospheric entry effects
           if (!earthColliding) {
             // Initial impact
-            velocity.multiplyScalar(0.3); 
+            velocity.multiplyScalar(0.3);
             setEarthColliding(true);
           }
+        } else if (collisionCooldown <= 0 && !shieldActive) {
+          // Destroy asteroid on collision when shield is active
+          const updatedObstacles = obstacles.filter((o) => o !== obstacle);
+          onObstaclesUpdate?.(updatedObstacles);
+          onAsteroidDestroyed?.();
 
           // Calculate gravity effect
           const gravityDirection = new THREE.Vector3()
@@ -387,6 +510,12 @@ const Spaceship = ({ obstacles = [] }) => {
           </group>
         ))}
       </group>
+      {projectiles.map((p) => (
+        <Projectile key={p.id} position={p.position} direction={p.direction} />
+      ))}
+      {explosions.map((e) => (
+        <Explosion key={e.id} position={e.position} scale={e.scale} />
+      ))}
 
       {/* Enhanced ship ambient lighting */}
       <pointLight
@@ -450,6 +579,8 @@ Spaceship.propTypes = {
       isEarth: PropTypes.bool,
     })
   ),
+  onAsteroidDestroyed: PropTypes.func,
+  onObstaclesUpdate: PropTypes.func,
 };
 
 Spaceship.defaultProps = {

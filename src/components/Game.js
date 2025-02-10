@@ -10,6 +10,8 @@ import LoadingScreen from "./LoadingScreen.js";
 const Game = () => {
   const [loadingProgress, setLoadingProgress] = useState(0);
   const [obstacles, setObstacles] = useState([]);
+  const [score, setScore] = useState(0);
+  const [highScore, setHighScore] = useState(0);
 
   useEffect(() => {
     // Simulate loading progress
@@ -35,9 +37,23 @@ const Game = () => {
           { name: "ascend", keys: ["KeyW", "w"] },
           { name: "descend", keys: ["KeyS", "s"] },
           { name: "shield", keys: ["KeyE", "e"] },
+          { name: "shoot", keys: ["KeyF", "f", "Mouse2"] },
         ]}
       >
         <div style={{ width: "100vw", height: "100vh" }}>
+          <div
+            style={{
+              position: "absolute",
+              top: 20,
+              left: 20,
+              color: "white",
+              fontFamily: "Arial",
+              fontSize: 24,
+              zIndex: 1,
+            }}
+          >
+            Score: {score} | High Score: {highScore}
+          </div>
           <Canvas
             camera={{ position: [0, 20, 50], fov: 70, near: 0.1, far: 1000 }}
             style={{ background: "#000000" }}
@@ -45,7 +61,16 @@ const Game = () => {
           >
             <Suspense fallback={null}>
               <Scene onObstaclesUpdate={setObstacles} />
-              <Spaceship obstacles={obstacles} />
+              <Spaceship
+                obstacles={obstacles}
+                onAsteroidDestroyed={() =>
+                  setScore((prev) => {
+                    const newScore = prev + 100;
+                    if (newScore > highScore) setHighScore(newScore);
+                    return newScore;
+                  })
+                }
+              />
             </Suspense>
           </Canvas>
         </div>
